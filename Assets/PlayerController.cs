@@ -34,11 +34,23 @@ public class PlayerController : MonoBehaviour
     
     // UI references
     public Text deathText;                   // Text to show on death
+    public Text scoreText;                   // Text to show score
+    public Text jumpHeightText;              // Text to show current jump height
+    public Text livesText;                   // Text to show remaining lives
     
     // Death text timer
     public float deathTextDuration = 2.0f;   // How long to show death text
     private float deathTextTimer = 0f;
     private bool isShowingDeathText = false;
+
+    // Scoring system
+    private int currentScore = 0;            // Current player score
+    private float maxHeightReached = 0f;     // Track max height during jump
+    private bool trackingHeight = false;     // Are we tracking height for scoring
+
+    // Lives system
+    public int maxLives = 3;                 // Maximum number of lives
+    private int currentLives;                // Current number of lives
 
     void Start()
     {
@@ -46,10 +58,25 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         startPosition = transform.position;
         
+        // Initialize lives
+        currentLives = maxLives;
+        
         // Hide the death text at start
         if (deathText != null)
         {
             deathText.gameObject.SetActive(false);
+        }
+        
+        // Initialize score display
+        UpdateScoreDisplay();
+        
+        // Initialize lives display
+        UpdateLivesDisplay();
+        
+        // Hide jump height text initially
+        if (jumpHeightText != null)
+        {
+            jumpHeightText.gameObject.SetActive(false);
         }
     }
 
@@ -160,10 +187,34 @@ public class PlayerController : MonoBehaviour
             // On the wave
             rb.useGravity = false;
             
-            // If we were in air and now entering water, inherit the air velocity
+            // If we were in air and now entering water, calculate score
             if (wasInAir) 
             {
                 wasInAir = false;
+                
+                // Calculate score based on max height reached
+                if (trackingHeight)
+                {
+                    int heightScore = Mathf.FloorToInt(maxHeightReached - heightThreshold);
+                    if (heightScore > 0)
+                    {
+                        // Add to score
+                        currentScore += heightScore;
+                        
+                        // Update score display
+                        UpdateScoreDisplay();
+                    }
+                    
+                    // Reset height tracking
+                    trackingHeight = false;
+                    maxHeightReached = 0f;
+                    
+                    // Hide jump height text when landing
+                    if (jumpHeightText != null)
+                    {
+                        jumpHeightText.gameObject.SetActive(false);
+                    }
+                }
                 
                 // Get the magnitude of the horizontal air velocity
                 Vector3 horizontalAirVelocity = new Vector3(airVelocity.x, 0, airVelocity.z);
@@ -200,6 +251,32 @@ public class PlayerController : MonoBehaviour
             // In the air
             rb.useGravity = true;
             
+            // Start tracking height when we leave the wave
+            if (wasOnWave)
+            {
+                trackingHeight = true;
+                maxHeightReached = currentHeight;
+                
+                // Show jump height text when leaving wave
+                if (jumpHeightText != null)
+                {
+                    jumpHeightText.gameObject.SetActive(true);
+                    UpdateJumpHeightDisplay(0); // Start at 0
+                }
+            }
+            else if (trackingHeight)
+            {
+                // Update max height if we're going higher
+                if (currentHeight > maxHeightReached)
+                {
+                    maxHeightReached = currentHeight;
+                    
+                    // Update jump height display with current height
+                    int currentJumpHeight = Mathf.FloorToInt(maxHeightReached - heightThreshold);
+                    UpdateJumpHeightDisplay(currentJumpHeight);
+                }
+            }
+            
             // Store current air velocity for when we return to water
             airVelocity = rb.linearVelocity;
             wasInAir = true;
@@ -235,6 +312,24 @@ public class PlayerController : MonoBehaviour
         inputEnabled = false;
         joystickReset = false;
         
+        // Decrease lives
+        currentLives--;
+        UpdateLivesDisplay();
+        
+        // Check if game over (no lives left)
+        if (currentLives <= 0)
+        {
+            // Reset lives
+            currentLives = maxLives;
+            UpdateLivesDisplay();
+            
+            // Reset score when all lives are lost
+            currentScore = 0;
+            UpdateScoreDisplay();
+            
+            // Could add game over text or other game over logic here
+        }
+        
         // Show death text and start timer
         if (deathText != null) 
         {
@@ -247,5 +342,42 @@ public class PlayerController : MonoBehaviour
         wasOnWave = false;
         wasInAir = false;
         airVelocity = Vector3.zero;
+        
+        // Hide jump height text on reset
+        if (jumpHeightText != null)
+        {
+            jumpHeightText.gameObject.SetActive(false);
+        }
+        
+        // Reset height tracking
+        trackingHeight = false;
+        maxHeightReached = 0f;
+    }
+
+    // Add this method to update the score display
+    private void UpdateScoreDisplay()
+    {
+        if (scoreText != null)
+        {
+            scoreText.text = "Score: " + currentScore;
+        }
+    }
+
+    // Add this method to update the jump height display
+    private void UpdateJumpHeightDisplay(int height)
+    {
+        if (jumpHeightText != null)
+        {
+            jumpHeightText.text = height + "m";
+        }
+    }
+
+    // Add this method to update the lives display
+    private void UpdateLivesDisplay()
+    {
+        if (livesText != null)
+        {
+            livesText.text = "Lives: " + currentLives;
+        }
     }
 }
