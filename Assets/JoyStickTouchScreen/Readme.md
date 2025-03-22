@@ -1,0 +1,2 @@
+MIT license.
+[llamacademy/mobile-touch-inputs: In this tutorial repository you can learn how to add a Touch Movement Joystick to control your player using the New Input System.](https://github.com/llamacademy/mobile-touch-inputs)
