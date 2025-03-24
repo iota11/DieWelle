@@ -6,14 +6,18 @@ public class PlayerController : MonoBehaviour
     // Movement and physics components
     private PlayerTouchMovement m_ptm;
     private Rigidbody rb;
-    
+
     // Speed settings
+    [Header("Player Speed")]
     public float speed = 10f;                // Base movement speed
     public float maxSpeed = 15f;             // Maximum possible speed
     public float rotationSpeed = 100f;       // Max rotation speed
     public float accelerationRate = 3f;      // How quickly to accelerate
     private float currentSpeed = 0f;         // Current speed
-    
+
+    [SerializeField]
+    private ScoreManager scoreManager;
+
     // Environment settings
     public float heightThreshold = 5f;       // Height that separates wave and air
     public float deathHeight = -5f;          // Height at which player dies
@@ -30,24 +34,11 @@ public class PlayerController : MonoBehaviour
     private bool wasOnWave = false;
     private Vector3 airVelocity;
     private bool wasInAir = false;
-    
-    // UI references
-    public Text deathText;                   // Text to show on death
-    public Text scoreText;                   // Text to show score
-    public Text jumpHeightText;              // Text to show current jump height
-    public Text livesText;                   // Text to show remaining lives
-    public Text rotationText;                // Text to show rotation achievements
-    public Text comboText;                   // Text to show current combo
-    
+
     // Death text timer
     public float deathTextDuration = 2.0f;   // How long to show death text
     private float deathTextTimer = 0f;
     private bool isShowingDeathText = false;
-
-    // Scoring system
-    private int currentScore = 0;            // Current player score
-    private float maxHeightReached = 0f;     // Track max height during jump
-    private bool trackingHeight = false;     // Are we tracking height for scoring
 
     // Lives system
     public int maxLives = 3;                 // Maximum number of lives
@@ -56,24 +47,14 @@ public class PlayerController : MonoBehaviour
     // Entry angle detection
     public float minSafeEntryAngle = 30f;    // Minimum safe angle for water entry (in degrees)
 
-    // Rotation tracking
-    private float totalRotation = 0f;        // Total rotation accumulated in air
+    // Play stun moves
     private bool isTrackingRotation = false; // Are we tracking rotation
+    private bool trackingHeight = false;     // Are we tracking height for scoring
+    private float maxHeightReached = 0f;     // Track max height during jump
     private bool hasStartedRotation = false; // Has rotation tracking started
     private float lastAngle = 0f;            // Last recorded angle
+    private float totalRotation = 0f;
     private bool[] rotationRewardsEarned = new bool[3] { false, false, false }; // Track which rotation rewards have been earned
-
-    // Rotation text display
-    private float rotationTextDuration = 2.0f;   // How long to show rotation text
-    private float rotationTextTimer = 0f;
-    private bool isShowingRotationText = false;
-
-    // Combo system
-    private int comboCount = 0;              // Current combo count
-    private bool lastJumpHadRotation = false; // Did the last jump have a rotation reward
-    private float comboTextDuration = 2.0f;   // How long to show combo text
-    private float comboTextTimer = 0f;
-    private bool isShowingComboText = false;
 
     void Start()
     {
@@ -86,16 +67,10 @@ public class PlayerController : MonoBehaviour
         currentLives = maxLives;
         
         // Initialize UI
-        if (deathText != null) deathText.gameObject.SetActive(false);
-        if (jumpHeightText != null) jumpHeightText.gameObject.SetActive(false);
-        if (rotationText != null) rotationText.gameObject.SetActive(false);
-        if (comboText != null) comboText.gameObject.SetActive(false);
-        
-        UpdateScoreDisplay();
-        UpdateLivesDisplay();
-        
-        // Initialize timers
-        isShowingComboText = false;
+        TextManager.Instance.SetTextFieldActive(TextType.death, false);
+        TextManager.Instance.SetTextFieldActive(TextType.jumpHeight, false);
+
+        TextManager.Instance.SetText(TextType.lives, "Lives: " + currentLives);
     }
 
     void FixedUpdate() 
@@ -173,7 +148,7 @@ public class PlayerController : MonoBehaviour
             deathTextTimer += Time.fixedDeltaTime;
             if (deathTextTimer >= deathTextDuration) 
             {
-                if (deathText != null) deathText.gameObject.SetActive(false);
+                TextManager.Instance.SetTextFieldActive(TextType.death, false);
                 isShowingDeathText = false;
             }
             else
@@ -184,28 +159,6 @@ public class PlayerController : MonoBehaviour
                 rb.angularVelocity = Vector3.zero;
                 inputEnabled = false;
                 return;
-            }
-        }
-
-        // Rotation text timer
-        if (isShowingRotationText) 
-        {
-            rotationTextTimer += Time.fixedDeltaTime;
-            if (rotationTextTimer >= rotationTextDuration) 
-            {
-                if (rotationText != null) rotationText.gameObject.SetActive(false);
-                isShowingRotationText = false;
-            }
-        }
-
-        // Combo text timer
-        if (isShowingComboText) 
-        {
-            comboTextTimer += Time.fixedDeltaTime;
-            if (comboTextTimer >= comboTextDuration) 
-            {
-                if (comboText != null) comboText.gameObject.SetActive(false);
-                isShowingComboText = false;
             }
         }
     }
@@ -292,8 +245,7 @@ public class PlayerController : MonoBehaviour
             int heightScore = Mathf.FloorToInt(maxHeightReached - heightThreshold);
             if (heightScore > 0)
             {
-                currentScore += heightScore;
-                UpdateScoreDisplay();
+                scoreManager.AddScore(heightScore);
             }
             
             // Reset height tracking
@@ -301,16 +253,11 @@ public class PlayerController : MonoBehaviour
             maxHeightReached = 0f;
             
             // Hide jump height text
-            if (jumpHeightText != null) jumpHeightText.gameObject.SetActive(false);
+            TextManager.Instance.SetTextFieldActive(TextType.jumpHeight, false);
         }
         
         // Calculate rotation rewards
-        CalculateRotationRewards();
-        
-        // Reset rotation tracking
-        totalRotation = 0f;
-        hasStartedRotation = false;
-        rotationRewardsEarned = new bool[3] { false, false, false };
+        scoreManager.CalculateRotationRewards(totalRotation);
         
         // Get the magnitude of the horizontal air velocity
         Vector3 horizontalAirVelocity = new Vector3(airVelocity.x, 0, airVelocity.z);
@@ -339,13 +286,10 @@ public class PlayerController : MonoBehaviour
             totalRotation = 0f;
             hasStartedRotation = false;
             rotationRewardsEarned = new bool[3] { false, false, false };
-            
+
             // Show jump height text
-            if (jumpHeightText != null)
-            {
-                jumpHeightText.gameObject.SetActive(true);
-                UpdateJumpHeightDisplay(0);
-            }
+            TextManager.Instance.SetTextFieldActive(TextType.jumpHeight, true);
+            TextManager.Instance.SetText(TextType.jumpHeight, "0m");
         }
         else if (trackingHeight)
         {
@@ -356,9 +300,9 @@ public class PlayerController : MonoBehaviour
                 
                 // Update jump height display
                 int currentJumpHeight = Mathf.FloorToInt(maxHeightReached - heightThreshold);
-                UpdateJumpHeightDisplay(currentJumpHeight);
+                TextManager.Instance.SetText(TextType.jumpHeight, currentJumpHeight + "m");
             }
-            
+
             // Track rotation
             TrackRotation(movement);
         }
@@ -428,28 +372,25 @@ public class PlayerController : MonoBehaviour
         
         // Decrease lives
         currentLives--;
-        UpdateLivesDisplay();
-        
+        TextManager.Instance.SetText(TextType.lives, "Lives: " + currentLives);
+
+        // Reset rotation tracking
+        totalRotation = 0f;
+        isTrackingRotation = false;
+
         // Check if game over (no lives left)
         if (currentLives <= 0)
         {
             // Reset lives
             currentLives = maxLives;
-            UpdateLivesDisplay();
-            
-            // Reset score when all lives are lost
-            currentScore = 0;
-            UpdateScoreDisplay();
+            TextManager.Instance.SetText(TextType.lives, "Lives: " + currentLives);
         }
-        
+
         // Show death text and start timer
-        if (deathText != null) 
-        {
-            deathText.gameObject.SetActive(true);
-            isShowingDeathText = true;
-            deathTextTimer = 0f;
-        }
-        
+        TextManager.Instance.SetTextFieldActive(TextType.death, true);
+        isShowingDeathText = true;
+        deathTextTimer = 0f;
+
         // Reset tracking variables
         wasOnWave = false;
         wasInAir = false;
@@ -458,147 +399,8 @@ public class PlayerController : MonoBehaviour
         // Reset height tracking
         trackingHeight = false;
         maxHeightReached = 0f;
-        if (jumpHeightText != null) jumpHeightText.gameObject.SetActive(false);
-        
-        // Reset rotation tracking
-        isTrackingRotation = false;
-        totalRotation = 0f;
-        if (rotationText != null) rotationText.gameObject.SetActive(false);
-        isShowingRotationText = false;
+        TextManager.Instance.SetTextFieldActive(TextType.jumpHeight, false);
 
-        // Reset combo
-        comboCount = 0;
-        lastJumpHadRotation = false;
-        if (comboText != null) comboText.gameObject.SetActive(false);
-        isShowingComboText = false;
-    }
-
-    private void CalculateRotationRewards()
-    {
-        // First rotation (270+ degrees counts as complete)
-        if (totalRotation >= 270f)
-        {
-            int rotationScore = 0;
-            string rotationMessage = "";
-            
-            // Third rotation (990 degrees = 270 + 360 + 360)
-            if (totalRotation >= 990f)
-            {
-                rotationScore = 1000;
-                rotationMessage = "TRIPLE 360!";
-            }
-            // Second rotation (630 degrees = 270 + 360)
-            else if (totalRotation >= 630f)
-            {
-                rotationScore = 100;
-                rotationMessage = "DOUBLE 360!";
-            }
-            // First rotation (270+ degrees)
-            else
-            {
-                rotationScore = 10;
-                rotationMessage = "360!";
-            }
-            
-            // Increment combo if we had a rotation in the last jump
-            if (lastJumpHadRotation)
-            {
-                comboCount++;
-            }
-            else
-            {
-                // First rotation in a new combo
-                comboCount = 1;
-            }
-            
-            // Apply combo multiplier to score
-            int comboMultiplier = comboCount;
-            int finalScore = rotationScore * comboMultiplier;
-            
-            // Add rotation score to total score
-            currentScore += finalScore;
-            UpdateScoreDisplay();
-            
-            // Update combo text
-            UpdateComboText();
-            
-            // Show rotation text with combo info
-            if (comboCount > 1)
-            {
-                rotationMessage += "\nCOMBO x" + comboCount + "!";
-                rotationMessage += "\n+" + finalScore + " POINTS!";
-            }
-            else
-            {
-                rotationMessage += "\n+" + finalScore + " POINTS!";
-            }
-            
-            // Show rotation text
-            ShowRotationText(rotationMessage);
-            
-            // Mark that this jump had a rotation
-            lastJumpHadRotation = true;
-        }
-        else
-        {
-            // No rotation this jump, break the combo
-            comboCount = 0;
-            lastJumpHadRotation = false;
-            UpdateComboText(); // This will hide the combo text
-        }
-    }
-
-    private void ShowRotationText(string message)
-    {
-        if (rotationText != null)
-        {
-            rotationText.text = message;
-            rotationText.gameObject.SetActive(true);
-            isShowingRotationText = true;
-            rotationTextTimer = 0f;
-        }
-    }
-
-    private void UpdateComboText()
-    {
-        if (comboText != null)
-        {
-            if (comboCount > 1)
-            {
-                comboText.text = "COMBO x" + comboCount;
-                comboText.gameObject.SetActive(true);
-                isShowingComboText = true;
-                comboTextTimer = 0f;
-            }
-            else
-            {
-                comboText.gameObject.SetActive(false);
-                isShowingComboText = false;
-            }
-        }
-    }
-
-    private void UpdateScoreDisplay()
-    {
-        if (scoreText != null)
-        {
-            scoreText.text = "Score: " + currentScore;
-        }
-    }
-
-    private void UpdateJumpHeightDisplay(int height)
-    {
-        if (jumpHeightText != null)
-        {
-            jumpHeightText.text = height + "m";
-        }
-    }
-
-    private void UpdateLivesDisplay()
-    {
-        if (livesText != null)
-        {
-            livesText.text = "Lives: " + currentLives;
-        }
+        scoreManager.ResetText();
     }
 }
