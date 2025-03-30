@@ -195,10 +195,56 @@ PrefabInstance:
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b86e4a16a46d34339bb4daf2fbe32ac8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 317895820}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: b86e4a16a46d34339bb4daf2fbe32ac8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 317895821}
     - targetCorrespondingSourceObject: {fileID: 7036213049465896255, guid: b86e4a16a46d34339bb4daf2fbe32ac8, type: 3}
       insertIndex: -1
       addedObject: {fileID: 594392499}
   m_SourcePrefab: {fileID: 100100000, guid: b86e4a16a46d34339bb4daf2fbe32ac8, type: 3}
+--- !u!1 &317895817 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: b86e4a16a46d34339bb4daf2fbe32ac8, type: 3}
+  m_PrefabInstance: {fileID: 206573318}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &317895820
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 317895817}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 35787fd181ca44286b52f83c04a9a9a2, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &317895821
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 317895817}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f912618a6d94d4518a7629b9dada2eb0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mat: {fileID: 2100000, guid: 8aa6e7e3c55984798842d5108fa46b62, type: 2}
 --- !u!1 &594392497 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 7036213049465896255, guid: b86e4a16a46d34339bb4daf2fbe32ac8, type: 3}
@@ -512,7 +558,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 5
+  orthographic size: 3.16
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -537,7 +583,7 @@ Transform:
   m_GameObject: {fileID: 1058677713}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: -10}
+  m_LocalPosition: {x: 2.13, y: 0.93, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -566,7 +612,7 @@ MonoBehaviour:
     m_Bits: 1
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
-  m_RenderPostProcessing: 0
+  m_RenderPostProcessing: 1
   m_Antialiasing: 0
   m_AntialiasingQuality: 2
   m_StopNaN: 0
