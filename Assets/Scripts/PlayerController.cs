@@ -54,6 +54,7 @@ public class PlayerController : MonoBehaviour
     private bool hasStartedRotation = false; // Has rotation tracking started
     private float lastAngle = 0f;            // Last recorded angle
     private float totalRotation = 0f;
+    public float globalTotalRotation = 0f;
     private bool[] rotationRewardsEarned = new bool[3] { false, false, false }; // Track which rotation rewards have been earned
 
     void Start()
@@ -89,7 +90,8 @@ public class PlayerController : MonoBehaviour
 
         // Get input
         Vector2 movement = m_ptm.GetMovement();
-        
+        TrackGlobalRotation(movement);
+
         // Check if joystick has been reset to center position
         if (!inputEnabled && !isShowingDeathText) 
         {
@@ -114,7 +116,7 @@ public class PlayerController : MonoBehaviour
             rb.angularVelocity = Vector3.zero;
             
             // Check if game should start (joystick pointing downward)
-            if (movement.y < -0.7f) 
+            if (transform.forward.y < -0.5f) 
             {
                 isGameStarted = true;
                 currentSpeed = 0f;
@@ -127,7 +129,6 @@ public class PlayerController : MonoBehaviour
         
         // Game has started - normal gameplay logic
         HandleRotation(movement);
-
         if (currentHeight < heightThreshold) 
         {
             // On the wave
@@ -164,7 +165,7 @@ public class PlayerController : MonoBehaviour
     }
 
     private void HandleRotation(Vector2 movement)
-    {
+    {/*
         if (movement.magnitude > 0.1f) 
         {
             // Calculate target rotation angle
@@ -173,7 +174,25 @@ public class PlayerController : MonoBehaviour
             // Smoothly rotate to target angle
             Quaternion targetRotation = Quaternion.Euler(0f, 0f, targetAngle);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.fixedDeltaTime);
+        }*/
+        float deltaAngle = 0f;
+
+        // Check for up and down input based on joystick.y value
+        if (Input.GetKey(KeyCode.UpArrow)) {
+            // When pressing up, rotate 30° per second clockwise
+            deltaAngle = -rotationSpeed * Time.deltaTime;
+        } else if (Input.GetKey(KeyCode.DownArrow)) {
+            // When pressing down, rotate -30° per second (anticlockwise)
+            deltaAngle = rotationSpeed * Time.deltaTime;
         }
+
+        // Calculate the incremental rotation around the Y axis
+        Quaternion deltaRotation = Quaternion.Euler(0, 0, deltaAngle);
+        // Compute the target rotation by applying the incremental rotation
+        Quaternion targetRotation = transform.rotation * deltaRotation;
+
+        // Smoothly interpolate from the current rotation to the target rotation
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 10 * Time.deltaTime);
     }
 
     private void HandleWaveMovement(Vector2 movement)
@@ -186,11 +205,7 @@ public class PlayerController : MonoBehaviour
             HandleWaterEntry(movement);
         }
         
-        // Acceleration logic
-        if (currentSpeed < speed) 
-        {
-            currentSpeed = Mathf.Min(currentSpeed + accelerationRate * Time.fixedDeltaTime, speed);
-        }
+     
         
         // Additional acceleration based on joystick
         if (movement.y > 0.2f) 
@@ -297,7 +312,6 @@ public class PlayerController : MonoBehaviour
             if (currentHeight > maxHeightReached)
             {
                 maxHeightReached = currentHeight;
-                
                 // Update jump height display
                 int currentJumpHeight = Mathf.FloorToInt(maxHeightReached - heightThreshold);
                 TextManager.Instance.SetText(TextType.jumpHeight, currentJumpHeight + "m");
@@ -322,36 +336,31 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private void TrackRotation(Vector2 movement)
-    {
-        if (isTrackingRotation && movement.magnitude > 0.5f)
-        {
+    private void TrackGlobalRotation(Vector2 movement) {//called each frame
+        if (movement.magnitude > 0.1f) {
             // Calculate current angle (0-360 degrees)
             float currentAngle = Mathf.Atan2(-movement.y, -movement.x) * Mathf.Rad2Deg;
             if (currentAngle < 0) currentAngle += 360f;
-            
-            // If this is the first valid input, initialize lastAngle
-            if (!hasStartedRotation)
-            {
-                lastAngle = currentAngle;
-                hasStartedRotation = true;
-            }
-            else
-            {
+
                 // Calculate angle change
-                float deltaAngle = currentAngle - lastAngle;
-                
-                // Handle angle wrap-around at 0/360 boundary
+             float deltaAngle = currentAngle - lastAngle;
+
+             // Handle angle wrap-around at 0/360 boundary
                 if (deltaAngle > 180f) deltaAngle -= 360f;
                 if (deltaAngle < -180f) deltaAngle += 360f;
-                
+
                 // Add absolute value of angle change to total rotation
-                totalRotation += Mathf.Abs(deltaAngle);
-                
+                globalTotalRotation += Mathf.Abs(deltaAngle);
+
                 // Update lastAngle
                 lastAngle = currentAngle;
             }
-        }
+        
+    }
+
+    private void TrackRotation(Vector2 movement)
+    {
+       
     }
 
     private void ResetPlayer() 
