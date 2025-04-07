@@ -919,7 +919,8 @@ GameObject:
   - component: {fileID: 729607526}
   - component: {fileID: 729607525}
   - component: {fileID: 729607528}
-  - component: {fileID: 729607529}
+  - component: {fileID: 729607530}
+  - component: {fileID: 729607531}
   m_Layer: 0
   m_Name: PlayerRoot
   m_TagString: Untagged
@@ -964,7 +965,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 729607524}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d51aaf2dfaa2c9447a6a339bf8820f1e, type: 3}
   m_Name: 
@@ -980,7 +981,22 @@ MonoBehaviour:
   deathTextDuration: 2
   maxLives: 3
   minSafeEntryAngle: 30
---- !u!54 &729607529
+  globalTotalRotation: 0
+--- !u!114 &729607530
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 729607524}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b6f3795d5e1711d44bc50c0205cca38e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  globalTotalRotation: 0
+  rotationSpeed: 400
+--- !u!54 &729607531
 Rigidbody:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1002,10 +1018,10 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 0
+  m_Constraints: 8
   m_CollisionDetection: 0
 --- !u!1 &776221277
 GameObject:
@@ -1518,7 +1534,7 @@ MeshCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 5
   m_Convex: 0
   m_CookingOptions: 30
