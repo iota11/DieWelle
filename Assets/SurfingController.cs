@@ -1,21 +1,39 @@
 using UnityEngine;
 public interface IState
 {
+    void Enter();
+    void Exit();
     void HandleRotation();
+    void HandleMovement();
 }
 
 // Waiting state implementation
 public class WaitingState : IState
 {
     private SurfingController surfingController;
-
+    public float localSpeed;
+    private Rigidbody rb;
+    private Transform trans;
     public WaitingState(SurfingController controller) {
         surfingController = controller;
+        rb = controller.rb;
+        localSpeed = controller.wave.speed - controller.waveBaseSpeed;
+        //set local speed 
+        trans = controller.transform;
     }
-
+    public void Enter() { }
+    public void Exit() { }
     public void HandleRotation() {
-        // Insert waiting-specific rotation logic here
-        Debug.Log("WaitingState: Handling Rotation");
+        float globalTotalRotation = surfingController.globalTotalRotation;
+        if (globalTotalRotation != 0) {
+            Debug.Log("Game Start!");
+            surfingController.SwitchState(surfingController.surfingState);
+        }
+    }
+    public void HandleMovement()
+    {
+        rb.linearVelocity = -trans.right * localSpeed - Vector3.right * surfingController.waveBaseSpeed;//constant speed
+        surfingController.localspeed = localSpeed;
     }
 }
 
@@ -23,14 +41,50 @@ public class WaitingState : IState
 public class SurfingState : IState
 {
     private SurfingController surfingController;
+    public float localspeed;
+    private Rigidbody rb;
+    private Transform trans;
 
     public SurfingState(SurfingController controller) {
         surfingController = controller;
+        rb = controller.rb;
+        localspeed = controller.wave.speed;
+        trans = controller.transform;
     }
-
+    public void Enter() { }
+    public void Exit() { }
     public void HandleRotation() {
-        // Insert surfing-specific rotation logic here
-        Debug.Log("SurfingState: Handling Rotation");
+        float globalTotalRotation = surfingController.globalTotalRotation;
+        float cur_rot_degree = surfingController.cur_rot_degree;
+        Quaternion startRotation = surfingController.startRotation;
+        float rotationSpeed = surfingController.rotationSpeed_surf;
+        if (Mathf.Abs(cur_rot_degree - globalTotalRotation) > rotationSpeed * Time.fixedDeltaTime)
+        {
+            if (cur_rot_degree < globalTotalRotation)
+            {
+                cur_rot_degree += rotationSpeed * Time.fixedDeltaTime;
+            }
+            else
+            {
+                cur_rot_degree -= rotationSpeed * Time.fixedDeltaTime;
+            }
+        }
+        else
+        {
+            cur_rot_degree = Mathf.Lerp(cur_rot_degree, globalTotalRotation, Time.fixedDeltaTime * 2f);
+        }
+        surfingController.cur_rot_degree = cur_rot_degree;
+        trans.localRotation = Quaternion.Lerp(trans.localRotation, startRotation * Quaternion.Euler(0f, 0f, cur_rot_degree), Time.fixedDeltaTime * 10f);
+    }
+    public void HandleMovement()
+    {
+        localspeed = surfingController.localspeed;
+        float acceleration = surfingController.acceleration;
+        float acc = Mathf.Clamp(trans.right.y, -1, 1) * acceleration;
+        if (acc < 0) acc *= 0.5f;
+        localspeed += acc * Time.fixedDeltaTime;
+        rb.linearVelocity = -trans.right * localspeed - Vector3.right * surfingController.waveBaseSpeed;
+        surfingController.localspeed  = localspeed;
     }
 }
 
@@ -38,38 +92,52 @@ public class SurfingState : IState
 public class JumpState : IState
 {
     private SurfingController surfingController;
+    public float speed;
+    private Rigidbody rb;
+    private Transform trans;
 
     public JumpState(SurfingController controller) {
         surfingController = controller;
+        rb = controller.rb;
+        speed = controller.wave.speed;
+        trans = controller.transform;
     }
-
+    public void Enter() { }
+    public void Exit() { }
     public void HandleRotation() {
         // Insert jump-specific rotation logic here
         Debug.Log("JumpState: Handling Rotation");
+    }
+    public void HandleMovement()
+    {
+
     }
 }
 public class SurfingController : MonoBehaviour
 {
     private IState currentState;
-
+    public float acceleration = 10f;
     // Create state instances
-    private WaitingState waitingState;
-    private SurfingState surfingState;
-    private JumpState jumpState;
+    public WaitingState waitingState;
+    public SurfingState surfingState;
+    public JumpState jumpState;
     private float lastAngle = 0f;            // Last recorded angle
-    private float totalRotation = 0f;
     public float globalTotalRotation = 0f;
-    public float rotationSpeed = 10f;
+    public float rotationSpeed_surf = 400f;
+    public WaveController wave;
     private PlayerTouchMovement m_ptm;
-    private Rigidbody rb;
-    private Quaternion startRotation;
-    float cur_rot_degree = 0.0f;
-
+    public Rigidbody rb { get; private set; }
+    public Quaternion startRotation { get; private set; }
+    public float cur_rot_degree { get; set; }
+    public float localspeed { get; set; }
+    public float waveBaseSpeed = 5f;
     void Start()
     {
         m_ptm = GetComponent<PlayerTouchMovement>();
         rb = GetComponent<Rigidbody>();
         startRotation = transform.localRotation;
+        cur_rot_degree = 0f;
+
         // Initialize states passing the state machine (for potential callbacks)
         waitingState = new WaitingState(this);
         surfingState = new SurfingState(this);
@@ -79,22 +147,20 @@ public class SurfingController : MonoBehaviour
         currentState = waitingState;
     }
 
+    public void SwitchState(IState newState)
+    {
+        currentState?.Exit();
+        currentState = newState;
+        currentState.Enter();
+    }
+
     private void FixedUpdate() {
         Vector2 movement = m_ptm.GetMovement();
 
-        TrackGlobalRotation(movement);
-        // Call HandleRotation of the current state
+        TrackGlobalRotation(movement);//record rotation all the time.
         currentState?.HandleRotation();
-       if(Mathf.Abs(cur_rot_degree - globalTotalRotation) > rotationSpeed * Time.fixedDeltaTime) {
-            if(cur_rot_degree < globalTotalRotation) {
-                cur_rot_degree +=rotationSpeed * Time.fixedDeltaTime;
-            } else {
-                cur_rot_degree -= rotationSpeed * Time.fixedDeltaTime;
-            }
-        } else {
-            cur_rot_degree = Mathf.Lerp(cur_rot_degree, globalTotalRotation, Time.fixedDeltaTime*2f);
-        }
-        transform.localRotation = Quaternion.Lerp(transform.localRotation, startRotation * Quaternion.Euler(0f, 0f, cur_rot_degree), Time.fixedDeltaTime*10f);
+        currentState?.HandleMovement();
+       
     }
 
 
