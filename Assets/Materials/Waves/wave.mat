@@ -132,7 +132,7 @@ Material:
     - _peakStep: 0.62
     - _peakStepEnd: 0.75
     - _speed: 0.05
-    - _time: 45.259983
+    - _time: 190.81993
     - _waveBaseStep: 0.4
     m_Colors:
     - _BaseColor: {r: 0.9063317, g: 0.9063317, b: 0.9063317, a: 1}

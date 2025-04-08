@@ -3,8 +3,7 @@ public interface IState
 {
     void Enter();
     void Exit();
-    void HandleRotation();
-    void HandleMovement();
+    void FixedUpdate();
 }
 
 // Waiting state implementation
@@ -23,7 +22,15 @@ public class WaitingState : IState
     }
     public void Enter() { }
     public void Exit() { }
+    public void FixedUpdate() {
+        CheckState();
+        HandleRotation();
+        HandleMovement();
+    }
     public void HandleRotation() {
+       
+    }
+    private void CheckState() {
         float globalTotalRotation = surfingController.globalTotalRotation;
         if (globalTotalRotation != 0) {
             Debug.Log("Game Start!");
@@ -32,6 +39,8 @@ public class WaitingState : IState
     }
     public void HandleMovement()
     {
+        rb.useGravity = false;
+
         rb.linearVelocity = -trans.right * localSpeed - Vector3.right * surfingController.waveBaseSpeed;//constant speed
         surfingController.localspeed = localSpeed;
     }
@@ -53,6 +62,11 @@ public class SurfingState : IState
     }
     public void Enter() { }
     public void Exit() { }
+    public void FixedUpdate() {
+        CheckState();
+        HandleRotation();
+        HandleMovement();
+    }
     public void HandleRotation() {
         float globalTotalRotation = surfingController.globalTotalRotation;
         float cur_rot_degree = surfingController.cur_rot_degree;
@@ -78,6 +92,8 @@ public class SurfingState : IState
     }
     public void HandleMovement()
     {
+        rb.useGravity = false;
+
         localspeed = surfingController.localspeed;
         float acceleration = surfingController.acceleration;
         float acc = Mathf.Clamp(trans.right.y, -1, 1) * acceleration;
@@ -85,6 +101,20 @@ public class SurfingState : IState
         localspeed += acc * Time.fixedDeltaTime;
         rb.linearVelocity = -trans.right * localspeed - Vector3.right * surfingController.waveBaseSpeed;
         surfingController.localspeed  = localspeed;
+    }
+    private void CheckState() {
+        Vector3 rayOrigin = trans.position;
+        Vector3 rayDirection =new Vector3(0,0,1f);
+        Debug.DrawRay(rayOrigin, rayDirection * 30f, Color.green);
+
+        int combinedLayerMask = surfingController.waterLayerMask | surfingController.dangerLayerMask;
+        if (Physics.Raycast(rayOrigin, rayDirection, out RaycastHit hit, 300f, combinedLayerMask)) {
+  
+        } 
+        else {
+            Debug.Log("jump!");
+            surfingController.SwitchState(surfingController.jumpState);
+        }
     }
 }
 
@@ -102,15 +132,50 @@ public class JumpState : IState
         speed = controller.wave.speed;
         trans = controller.transform;
     }
+    public void FixedUpdate() {
+        CheckState();
+        HandleRotation();
+        HandleMovement();
+    }
+    private void CheckState() {
+        Vector3 rayOrigin = trans.position;
+        Vector3 rayDirection = new Vector3(0, 0, 1f);
+        Debug.DrawRay(rayOrigin, rayDirection * 30f, Color.green);
+
+        int combinedLayerMask = surfingController.waterLayerMask | surfingController.dangerLayerMask;
+        if (Physics.Raycast(rayOrigin, rayDirection, out RaycastHit hit, 300f, combinedLayerMask)) {
+            float proj = Vector3.Dot((rb.linearVelocity ).normalized, (-trans.right ).normalized);
+            Debug.Log("proj is " + proj);
+            surfingController.localspeed = proj * (rb.linearVelocity - surfingController.waveBaseSpeed * Vector3.left).magnitude;
+            surfingController.SwitchState(surfingController.surfingState);
+
+        } else {
+            Debug.Log("jump!");
+            surfingController.SwitchState(surfingController.jumpState);
+        }
+    }
     public void Enter() { }
     public void Exit() { }
     public void HandleRotation() {
-        // Insert jump-specific rotation logic here
-        Debug.Log("JumpState: Handling Rotation");
+        float globalTotalRotation = surfingController.globalTotalRotation;
+        float cur_rot_degree = surfingController.cur_rot_degree;
+        Quaternion startRotation = surfingController.startRotation;
+        float rotationSpeed = surfingController.rotationSpeed_surf*1.5f;
+        if (Mathf.Abs(cur_rot_degree - globalTotalRotation) > rotationSpeed * Time.fixedDeltaTime) {
+            if (cur_rot_degree < globalTotalRotation) {
+                cur_rot_degree += rotationSpeed * Time.fixedDeltaTime;
+            } else {
+                cur_rot_degree -= rotationSpeed * Time.fixedDeltaTime;
+            }
+        } else {
+            cur_rot_degree = Mathf.Lerp(cur_rot_degree, globalTotalRotation, Time.fixedDeltaTime * 2f);
+        }
+        surfingController.cur_rot_degree = cur_rot_degree;
+        trans.localRotation = Quaternion.Lerp(trans.localRotation, startRotation * Quaternion.Euler(0f, 0f, cur_rot_degree), Time.fixedDeltaTime * 10f);
     }
     public void HandleMovement()
     {
-
+        rb.useGravity = true;
     }
 }
 public class SurfingController : MonoBehaviour
@@ -126,6 +191,9 @@ public class SurfingController : MonoBehaviour
     public float rotationSpeed_surf = 400f;
     public WaveController wave;
     private PlayerTouchMovement m_ptm;
+    public LayerMask waterLayerMask;
+    public LayerMask dangerLayerMask;
+    public Animator animator; 
     public Rigidbody rb { get; private set; }
     public Quaternion startRotation { get; private set; }
     public float cur_rot_degree { get; set; }
@@ -158,9 +226,8 @@ public class SurfingController : MonoBehaviour
         Vector2 movement = m_ptm.GetMovement();
 
         TrackGlobalRotation(movement);//record rotation all the time.
-        currentState?.HandleRotation();
-        currentState?.HandleMovement();
-       
+        currentState?.FixedUpdate();
+
     }
 
 
@@ -179,7 +246,17 @@ public class SurfingController : MonoBehaviour
 
             // Add absolute value of angle change to total rotation
             globalTotalRotation += deltaAngle;
+            if (deltaAngle < 0f) {
+                animator.SetBool("Right", true);
+                animator.SetBool("Left", false);
 
+            } else if(deltaAngle >0f) {
+                animator.SetBool("Right", false);
+                animator.SetBool("Left", true);
+            } else {
+                animator.SetBool("Right", false);
+                animator.SetBool("Left", false);
+            }
             // Update lastAngle
             lastAngle = currentAngle;
         }
