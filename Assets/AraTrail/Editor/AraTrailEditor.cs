@@ -9,6 +9,7 @@ namespace Ara{
     internal class AraTrailEditor : Editor
     {
         SerializedProperty surfingController;
+        SerializedProperty clipWave;
         SerializedProperty section;
         SerializedProperty space;
         SerializedProperty customSpace;
@@ -56,6 +57,7 @@ namespace Ara{
         public void OnEnable()
         {
             surfingController = serializedObject.FindProperty("surfingController");
+            clipWave = serializedObject.FindProperty("clipWave");
             section = serializedObject.FindProperty("section");
             space = serializedObject.FindProperty("space");
             customSpace = serializedObject.FindProperty("customSpace");
@@ -106,7 +108,7 @@ namespace Ara{
             this.serializedObject.Update();
             //Editor.DrawPropertiesExcluding(serializedObject,"m_Script");
             EditorGUILayout.PropertyField(surfingController);
-
+            EditorGUILayout.PropertyField(clipWave);
             EditorGUILayout.PropertyField(section);
             EditorGUILayout.PropertyField(space);
             if (space.enumValueIndex == 2)

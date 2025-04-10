@@ -151,7 +151,7 @@ namespace Ara{
         [Tooltip("Trail cross-section asset, determines the shape of the emitted trail. If no asset is specified, the trail will be a simple strip.")]
         public TrailSection section = null;
         public SurfingController surfingController;
-
+        public bool clipWave = false;
         [Tooltip("Whether to use world or local space to generate and simulate the trail.")]
         public TrailSpace space = TrailSpace.World;
         [Tooltip("Custom space to use when generating and simulating the trail")]
@@ -539,6 +539,7 @@ namespace Ara{
          */
         private void UpdatePointsLifecycle()
         {
+            bool front_land = false;
 
             for (int i = points.Count - 1; i >= 0; --i)
             {
@@ -549,18 +550,22 @@ namespace Ara{
                 Vector3 rayOrigin = point.position;
                 Vector3 rayDirection = new Vector3(0, 0, 1f);
                 int combinedLayerMask = surfingController.waterLayerMask | surfingController.dangerLayerMask;
-                if (Physics.Raycast(rayOrigin, rayDirection, out RaycastHit hit, 300f, combinedLayerMask)) {
-                } else {
-                    if (points[Mathf.Min(i + 1, points.Count - 1)].life <= 0 &&
-                            points[Mathf.Min(i + 2, points.Count - 1)].life <= 0)
-                        points.RemoveAt(i);
-                    /*
-                    for(int j = i; j>=0; j--) {
-                        points.RemoveAt(j);
-                    }*/
-                }
+                if (clipWave) {
+                    if (Physics.Raycast(rayOrigin, rayDirection, out RaycastHit hit, 300f, combinedLayerMask)) {
+                        front_land = true;
+                    } else {
+                        points.RemoveAt(i);//custom code
+                        for (int j = i + 1; j < points.Count; j++) {
+                        }
+                        if (front_land) {
 
-                    if (point.life <= 0)
+                            for (int j = i; j >= 0; j--) {
+                                points.RemoveAt(j);
+                            }
+                        }
+                    }
+                }
+                if (point.life <= 0)
                 {
 
                     // Unsmoothed trails delete points as soon as they die.
@@ -799,11 +804,11 @@ namespace Ara{
                 trail.Reverse();
 
             var data = trail.Data;
-
+            float totalLength = 0;
             if (trail.Count > 1)
             {
 
-                float totalLength = 0;
+                totalLength = 0;
                 for (int i = 0; i < trail.Count - 1; ++i)
                     totalLength += Vector3.Distance(data[i].position, data[i + 1].position);
 
@@ -886,9 +891,9 @@ namespace Ara{
                         vCoord = tileAnchor + data[i].texcoord * uvFactor;
 
                     if (section != null)
-                        AppendSection(data, ref frame, i, trail.Count, sectionThickness, vCoord);
+                        AppendSection(data, ref frame, i, trail.Count, sectionThickness, vCoord * (totalLength/10f));
                     else
-                        AppendFlatTrail(data, ref frame, i, trail.Count, sectionThickness, vCoord, ref va, ref vb);
+                        AppendFlatTrail(data, ref frame, i, trail.Count, sectionThickness, vCoord * (totalLength / 10f), ref va, ref vb);
 
                     // Update vcoord:
                     float uvDelta = (textureMode == TextureMode.Stretch ? sectionLength / totalLength : sectionLength);
