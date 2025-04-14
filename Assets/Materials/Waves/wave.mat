@@ -132,7 +132,7 @@ Material:
     - _peakStep: 0.62
     - _peakStepEnd: 0.75
     - _speed: 0.05
-    - _time: 2083.0393
+    - _time: 35.419987
     - _waveBaseStep: 0.4
     m_Colors:
     - _BaseColor: {r: 0.9063317, g: 0.9063317, b: 0.9063317, a: 1}
@@ -141,6 +141,7 @@ Material:
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
     - _peakDark: {r: 0.5768512, g: 0.8207547, b: 0.7404193, a: 0}
     - _peakLight: {r: 1, g: 1, b: 1, a: 1}
+    - _shadowColor: {r: 0.016316546, g: 0.17361417, b: 0.4716981, a: 0}
     - _waveBaseDark: {r: 0.17061234, g: 0.22650045, b: 0.509434, a: 0}
     - _waveBaseLight: {r: 0.16104485, g: 0.57777715, b: 0.7264151, a: 0}
   m_BuildTextureStacks: []
