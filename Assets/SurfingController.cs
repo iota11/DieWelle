@@ -1,4 +1,8 @@
 using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine.InputSystem.XR;
+
 public interface IState
 {
     void Enter();
@@ -93,7 +97,6 @@ public class SurfingState : IState
     public void HandleMovement()
     {
         rb.useGravity = false;
-
         localspeed = surfingController.localspeed;
         float acceleration = surfingController.acceleration;
         float acc = Mathf.Clamp(trans.right.y, -1, 1) * acceleration;
@@ -108,6 +111,11 @@ public class SurfingState : IState
         Debug.DrawRay(rayOrigin, rayDirection * 30f, Color.green);
 
         int combinedLayerMask = surfingController.waterLayerMask | surfingController.dangerLayerMask;
+
+        if (Physics.Raycast(rayOrigin, rayDirection, out RaycastHit hit2, 300f, surfingController.dangerLayerMask)) {
+            surfingController.SwitchState(surfingController.deadState);
+            return;
+        }
         if (Physics.Raycast(rayOrigin, rayDirection, out RaycastHit hit, 300f, combinedLayerMask)) {
   
         } 
@@ -122,14 +130,15 @@ public class SurfingState : IState
 public class JumpState : IState
 {
     private SurfingController surfingController;
-    public float speed;
+    public float wavespeed;
     private Rigidbody rb;
     private Transform trans;
-
+    private float start_rotation;
+    private float end_rotation;
     public JumpState(SurfingController controller) {
         surfingController = controller;
         rb = controller.rb;
-        speed = controller.wave.speed;
+        wavespeed = controller.wave.speed;
         trans = controller.transform;
     }
     public void FixedUpdate() {
@@ -140,21 +149,30 @@ public class JumpState : IState
     private void CheckState() {
         Vector3 rayOrigin = trans.position;
         Vector3 rayDirection = new Vector3(0, 0, 1f);
-        Debug.DrawRay(rayOrigin, rayDirection * 30f, Color.green);
 
-        int combinedLayerMask = surfingController.waterLayerMask | surfingController.dangerLayerMask;
-        if (Physics.Raycast(rayOrigin, rayDirection, out RaycastHit hit, 300f, combinedLayerMask)) {
-            float proj = Vector3.Dot((rb.linearVelocity ).normalized, (-trans.right ).normalized);
+        if (Physics.Raycast(rayOrigin, rayDirection, out RaycastHit hit2, 300f, surfingController.dangerLayerMask)) {
+            surfingController.SwitchState(surfingController.deadState);
+            return;
+        }
+
+        if (Physics.Raycast(rayOrigin, rayDirection, out RaycastHit hit, 300f, surfingController.waterLayerMask)) {
+            float proj = Vector3.Dot((rb.linearVelocity - surfingController.waveBaseSpeed * Vector3.left).normalized, (-trans.right).normalized);
             Debug.Log("proj is " + proj);
-            surfingController.localspeed = proj * (rb.linearVelocity - surfingController.waveBaseSpeed * Vector3.left).magnitude;
-            surfingController.SwitchState(surfingController.surfingState);
 
-        } else {
-            Debug.Log("jump!");
-            surfingController.SwitchState(surfingController.jumpState);
+            if (proj < 0.8f) {
+               surfingController.SwitchState(surfingController.deadState);
+            } else {
+                end_rotation = surfingController.globalTotalRotation;
+                int rotationItvl = (int)Mathf.Abs(end_rotation - start_rotation);
+                ScoreManager.instance.AddScore(rotationItvl);
+                surfingController.localspeed = (proj*rb.linearVelocity - surfingController.waveBaseSpeed * Vector3.left).magnitude;
+                surfingController.SwitchState(surfingController.surfingState);
+            }
         }
     }
-    public void Enter() { }
+    public void Enter() {
+        start_rotation = surfingController.globalTotalRotation;
+    }
     public void Exit() { }
     public void HandleRotation() {
         float globalTotalRotation = surfingController.globalTotalRotation;
@@ -178,6 +196,43 @@ public class JumpState : IState
         rb.useGravity = true;
     }
 }
+
+public class DeadState : IState
+{
+    private SurfingController surfingController;
+    public float localspeed;
+    private Rigidbody rb;
+    private Transform trans;
+    private float splashSpeed = 40f;
+    public float torqueAmount = 720f; // degrees per second
+
+    public DeadState(SurfingController surfingController) {
+        this.surfingController = surfingController;
+        this.rb = surfingController.rb;
+        this.trans = surfingController.transform;
+        splashSpeed = surfingController.splashSpeed;
+    }
+
+    public void Enter() {
+        DeadAnim();
+     }
+    public void Exit() {
+
+    }
+    public void FixedUpdate() {
+
+    }
+    private void DeadAnim() {
+        rb.useGravity = true;
+        rb.linearVelocity = new Vector3(rb.linearVelocity.x, 5f, rb.linearVelocity.z);
+        //rb.AddForce(Vector3.up * splashSpeed, ForceMode.VelocityChange);
+        Vector3 torque = trans.forward * torqueAmount;
+        trans.position = trans.position + new Vector3(0, 0, 3f);
+        rb.AddTorque(torque, ForceMode.VelocityChange);
+        LevelManager.Instance.OnPlayerDied();
+    }
+
+}
 public class SurfingController : MonoBehaviour
 {
     private IState currentState;
@@ -186,6 +241,8 @@ public class SurfingController : MonoBehaviour
     public WaitingState waitingState;
     public SurfingState surfingState;
     public JumpState jumpState;
+    public DeadState deadState;
+    public float splashSpeed = 30f;
     private float lastAngle = 0f;            // Last recorded angle
     public float globalTotalRotation = 0f;
     public float rotationSpeed_surf = 400f;
@@ -210,7 +267,7 @@ public class SurfingController : MonoBehaviour
         waitingState = new WaitingState(this);
         surfingState = new SurfingState(this);
         jumpState = new JumpState(this);
-
+        deadState = new DeadState(this);
         // Start in the waiting state
         currentState = waitingState;
     }
@@ -230,7 +287,9 @@ public class SurfingController : MonoBehaviour
 
     }
 
+    public void ResetPlayer() {
 
+    }
     private void TrackGlobalRotation(Vector2 movement) {//called each frame
         if (movement.magnitude > 0.1f) {
             // Calculate current angle (0-360 degrees)

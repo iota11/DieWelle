@@ -4,6 +4,7 @@ using UnityEngine.UI;
 
 public class ScoreManager : MonoBehaviour
 {
+    public static ScoreManager instance;
     // Scoring system
     private int currentScore = 0;            // Current player score
 
@@ -22,6 +23,7 @@ public class ScoreManager : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        instance = this;
         TextManager.Instance.SetTextFieldActive(TextType.rotation, false);
         TextManager.Instance.SetTextFieldActive(TextType.combo, false);
 
