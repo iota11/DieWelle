@@ -172,8 +172,11 @@ public class JumpState : IState
     }
     public void Enter() {
         start_rotation = surfingController.globalTotalRotation;
+        surfingController.waterDrops.Play();
     }
-    public void Exit() { }
+    public void Exit() {
+        surfingController.waterDrops.Stop();
+    }
     public void HandleRotation() {
         float globalTotalRotation = surfingController.globalTotalRotation;
         float cur_rot_degree = surfingController.cur_rot_degree;
@@ -235,6 +238,7 @@ public class DeadState : IState
 }
 public class SurfingController : MonoBehaviour
 {
+    public ParticleSystem waterDrops;
     private IState currentState;
     public float acceleration = 10f;
     // Create state instances
