@@ -102,6 +102,7 @@ public class SurfingState : IState
         float acc = Mathf.Clamp(trans.right.y, -1, 1) * acceleration;
         if (acc < 0) acc *= 0.5f;
         localspeed += acc * Time.fixedDeltaTime;
+        localspeed = Mathf.Clamp(localspeed, 0, surfingController.speedMax - surfingController.waveBaseSpeed);
         rb.linearVelocity = -trans.right * localspeed - Vector3.right * surfingController.waveBaseSpeed;
         surfingController.localspeed  = localspeed;
     }
@@ -159,7 +160,7 @@ public class JumpState : IState
             float proj = Vector3.Dot((rb.linearVelocity - surfingController.waveBaseSpeed * Vector3.left).normalized, (-trans.right).normalized);
             Debug.Log("proj is " + proj);
 
-            if (proj < 0.8f) {
+            if (proj < surfingController.tolerrance) {
                surfingController.SwitchState(surfingController.deadState);
             } else {
                 end_rotation = surfingController.globalTotalRotation;
@@ -247,6 +248,7 @@ public class SurfingController : MonoBehaviour
     public JumpState jumpState;
     public DeadState deadState;
     public float splashSpeed = 30f;
+    public float speedMax = 15f;
     private float lastAngle = 0f;            // Last recorded angle
     public float globalTotalRotation = 0f;
     public float rotationSpeed_surf = 400f;
@@ -254,7 +256,8 @@ public class SurfingController : MonoBehaviour
     private PlayerTouchMovement m_ptm;
     public LayerMask waterLayerMask;
     public LayerMask dangerLayerMask;
-    public Animator animator; 
+    public Animator animator;
+    public float tolerrance = 0.7f;
     public Rigidbody rb { get; private set; }
     public Quaternion startRotation { get; private set; }
     public float cur_rot_degree { get; set; }
