@@ -3,4 +3,93 @@
 --- !u!236 &1
 ClusterInputManager:
   m_ObjectHideFlags: 0
-  m_Inputs: []
+  m_Enabled: 1
+  m_SyncMode: 0  # 0 could mean default synchronization from master to slaves
+  m_ClusterNodes:
+    - nodeId: 0
+      nodeName: "Master"
+      ipAddress: "192.168.1.100"
+    - nodeId: 1
+      nodeName: "Slave1"
+      ipAddress: "192.168.1.101"
+  m_Inputs:
+    - name: "Horizontal"
+      descriptiveName: "Horizontal Movement"
+      descriptiveNegativeName: ""
+      negativeButton: "left"
+      positiveButton: "right"
+      altNegativeButton: "a"
+      altPositiveButton: "d"
+      gravity: 3.0
+      dead: 0.001
+      sensitivity: 3.0
+      snap: 1
+      invert: 0
+      type: 2  # JoystickAxis
+      axis: 0  # X axis
+      joyNum: 0  # All joysticks
+      syncMode: 0  # Synchronized from master
+    - name: "Vertical"
+      descriptiveName: "Vertical Movement"
+      descriptiveNegativeName: ""
+      negativeButton: "down"
+      positiveButton: "up"
+      altNegativeButton: "s"
+      altPositiveButton: "w"
+      gravity: 3.0
+      dead: 0.001
+      sensitivity: 3.0
+      snap: 1
+      invert: 0
+      type: 2  # JoystickAxis
+      axis: 1  # Y axis
+      joyNum: 0
+      syncMode: 0
+    - name: "Mouse X"
+      descriptiveName: "Horizontal Look"
+      descriptiveNegativeName: ""
+      negativeButton: ""
+      positiveButton: ""
+      altNegativeButton: ""
+      altPositiveButton: ""
+      gravity: 0.0
+      dead: 0.0
+      sensitivity: 1.0
+      snap: 0
+      invert: 0
+      type: 1  # MouseMovement
+      axis: 0  # X axis
+      joyNum: 0
+      syncMode: 1  # Input from slaves to master
+    - name: "Jump"
+      descriptiveName: "Jump Action"
+      descriptiveNegativeName: ""
+      negativeButton: ""
+      positiveButton: "space"
+      altNegativeButton: ""
+      altPositiveButton: "joystick button 0"
+      gravity: 1000.0
+      dead: 0.001
+      sensitivity: 1000.0
+      snap: 0
+      invert: 0
+      type: 0  # KeyOrMouseButton
+      axis: 0
+      joyNum: 0
+      syncMode: 0
+    - name: "Fire"
+      descriptiveName: "Fire Action"
+      descriptiveNegativeName: ""
+      negativeButton: ""
+      positiveButton: "left ctrl"
+      altNegativeButton: ""
+      altPositiveButton: "mouse 0"
+      gravity: 1000.0
+      dead: 0.001
+      sensitivity: 1000.0
+      snap: 0
+      invert: 0
+      type: 0  # KeyOrMouseButton
+      axis: 0
+      joyNum: 0
+      syncMode: 0
