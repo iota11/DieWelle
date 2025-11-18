@@ -19,8 +19,11 @@ public class TextManager : SingletonBehavior<TextManager>
 
     private Dictionary<TextType, Text> textTypeDict = new Dictionary<TextType, Text>();
 
-    private void Start()
+    protected override void Awake()
     {
+        base.Awake(); // Call parent's Awake to set up singleton
+
+        // Initialize dictionary in Awake to ensure it's ready before any Start() methods
         textTypeDict.Add(TextType.score, scoreText);
         textTypeDict.Add(TextType.rotation, rotationText);
         textTypeDict.Add(TextType.combo, comboText);
@@ -31,6 +34,12 @@ public class TextManager : SingletonBehavior<TextManager>
 
     public void SetText(TextType type, string text)
     {
+        if (!textTypeDict.ContainsKey(type))
+        {
+            Debug.LogError($"TextType {type} not found in dictionary. Make sure TextManager is initialized.");
+            return;
+        }
+
         Text textField = textTypeDict[type];
 
         if (textField != null)
@@ -39,12 +48,18 @@ public class TextManager : SingletonBehavior<TextManager>
         }
         else
         {
-            Debug.LogError($"Text field of TextType {type} DNE");
+            Debug.LogError($"Text field of TextType {type} is null. Assign it in the Inspector.");
         }
     }
 
     public void SetTextFieldActive(TextType type, bool active)
     {
+        if (!textTypeDict.ContainsKey(type))
+        {
+            Debug.LogError($"TextType {type} not found in dictionary. Make sure TextManager is initialized.");
+            return;
+        }
+
         Text textField = textTypeDict[type];
 
         if (textField != null)
@@ -53,7 +68,7 @@ public class TextManager : SingletonBehavior<TextManager>
         }
         else
         {
-            Debug.LogError($"Text field of TextType {type} DNE");
+            Debug.LogError($"Text field of TextType {type} is null. Assign it in the Inspector.");
         }
     }
 }
