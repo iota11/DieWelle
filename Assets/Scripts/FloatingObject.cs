@@ -30,16 +30,65 @@ public class FloatingObject : MonoBehaviour
     [Tooltip("Delay before starting wave detection (seconds)")]
     public float detectionStartDelay = 1f;
 
+    [Header("Rotation Settings")]
+    [Tooltip("Height above object to check for wave (meters)")]
+    public float raycastHeightOffset = 5f;
+
+    [Tooltip("Duration of rotation transition when leaving wave (seconds)")]
+    public float rotationTransitionDuration = 1f;
+
+    [Tooltip("Gravity during death fall (m/s²)")]
+    public float deathGravity = 9.8f;
+
+    [Tooltip("Duration of death fall before destroy (seconds)")]
+    public float deathFallDuration = 2f;
+
+    [Tooltip("Z offset when entering death state (moves behind wave)")]
+    public float deathZOffset = 10f;
+
+    [Tooltip("Minimum rotation speed around local Y axis (degrees/second)")]
+    public float minRotationSpeed = 90f;
+
+    [Tooltip("Maximum rotation speed around local Y axis (degrees/second)")]
+    public float maxRotationSpeed = 180f;
+
     [Header("Debug")]
     [Tooltip("Show raycast debug line")]
     public bool showDebugRay = true;
+
+    [Tooltip("Show rotation debug info")]
+    public bool showRotationDebug = false;
 
     private float verticalVelocity = 0f;
     private float lastCheckTime = 0f;
     private float spawnTime;
 
+    // Rotation
+    private float rotationSpeed = 0f;
+    private float accumulatedYRotation = 0f;
+
+    // Leaving state
+    private bool isLeaving = false;
+    private float leavingStartTime = 0f;
+    private float initialXRotation = -90f;
+
+    // Death state
+    private bool isDead = false;
+    private float deathStartTime = 0f;
+
     void Start()
     {
+        // Set initial rotation: X = -90 degrees
+        transform.rotation = Quaternion.Euler(-90f, 0f, 0f);
+
+        // Initialize random rotation speed around local Y axis
+        rotationSpeed = Random.Range(minRotationSpeed, maxRotationSpeed);
+
+        if (showRotationDebug)
+        {
+            Debug.Log($"FloatingObject spawned with rotation speed: {rotationSpeed:F1}°/s");
+        }
+
         // Initialize vertical velocity to 0
         verticalVelocity = 0f;
         spawnTime = Time.time;
@@ -48,8 +97,17 @@ public class FloatingObject : MonoBehaviour
 
     void FixedUpdate()
     {
-        // Update vertical velocity with acceleration
-        verticalVelocity += upwardAcceleration * Time.fixedDeltaTime;
+        // Update vertical velocity based on current state
+        if (isDead)
+        {
+            // Death state: apply gravity
+            verticalVelocity -= deathGravity * Time.fixedDeltaTime;
+        }
+        else
+        {
+            // Normal and Leaving states: continue accelerating upward
+            verticalVelocity += upwardAcceleration * Time.fixedDeltaTime;
+        }
 
         // Calculate movement delta
         Vector3 movement;
@@ -76,8 +134,38 @@ public class FloatingObject : MonoBehaviour
         // Apply movement
         transform.position += movement;
 
+        // Accumulate Y rotation
+        accumulatedYRotation += rotationSpeed * Time.fixedDeltaTime;
+
+        // Calculate X rotation based on state
+        float targetXRotation = initialXRotation;
+        if (isLeaving || isDead)
+        {
+            float elapsedTime = Time.time - leavingStartTime;
+            float t = Mathf.Clamp01(elapsedTime / rotationTransitionDuration);
+            targetXRotation = Mathf.Lerp(initialXRotation, 0f, t);
+        }
+
+        // Apply rotation in correct order for local Y rotation:
+        // 1. First rotate around Y (self-rotation)
+        // 2. Then rotate around X (lying down/standing up)
+        Quaternion yRotation = Quaternion.Euler(0f, accumulatedYRotation, 0f);
+        Quaternion xRotation = Quaternion.Euler(targetXRotation, 0f, 0f);
+        transform.rotation = xRotation * yRotation;
+
+        // Handle death state timing
+        if (isDead)
+        {
+            float deathElapsed = Time.time - deathStartTime;
+            if (deathElapsed >= deathFallDuration)
+            {
+                Debug.Log($"FloatingObject destroyed after death fall at position {transform.position}");
+                Destroy(gameObject);
+            }
+        }
+
         // Check if object should be destroyed (not at every frame for performance)
-        if (Time.time >= lastCheckTime + checkInterval)
+        if (!isDead && Time.time >= lastCheckTime + checkInterval)
         {
             CheckWaveCollision();
             lastCheckTime = Time.time;
@@ -86,7 +174,8 @@ public class FloatingObject : MonoBehaviour
 
     /// <summary>
     /// Checks if the object is still above the wave using a raycast
-    /// Destroys the object if no wave is detected below
+    /// Triggers leaving transition if no wave is detected
+    /// In leaving state, checks from current position to detect boundary exit
     /// </summary>
     void CheckWaveCollision()
     {
@@ -96,8 +185,18 @@ public class FloatingObject : MonoBehaviour
             return;
         }
 
-        // Raycast origin is the object's position
-        Vector3 rayOrigin = transform.position;
+        // Raycast origin depends on current state
+        Vector3 rayOrigin;
+        if (isLeaving)
+        {
+            // In leaving state: check from current position to detect boundary
+            rayOrigin = transform.position;
+        }
+        else
+        {
+            // Normal state: check from 5m above for early detection
+            rayOrigin = transform.position + Vector3.up * raycastHeightOffset;
+        }
 
         // Raycast direction is forward along Z-axis
         Vector3 rayDirection = Vector3.forward;
@@ -124,12 +223,41 @@ public class FloatingObject : MonoBehaviour
             }
         }
 
-        // If no wave detected, destroy this object
+        // State transitions based on wave detection
         if (!hitWave)
         {
-            Debug.Log($"FloatingObject destroyed - no wave detected at position {transform.position}");
-            Destroy(gameObject);
+            if (isLeaving)
+            {
+                // In leaving state and no wave detected → enter death state
+                EnterDeathState();
+            }
+            else
+            {
+                // Normal state and no wave detected → enter leaving state
+                Debug.Log($"FloatingObject entering leaving state at position {transform.position}");
+                isLeaving = true;
+                leavingStartTime = Time.time;
+            }
         }
+    }
+
+    /// <summary>
+    /// Enters the death state: moves object behind wave and starts falling
+    /// </summary>
+    void EnterDeathState()
+    {
+        if (isDead) return; // Already dead
+
+        Debug.Log($"FloatingObject entering death state at position {transform.position}");
+
+        isDead = true;
+        deathStartTime = Time.time;
+
+        // Move object behind wave (Z + 10)
+        Vector3 currentPos = transform.position;
+        transform.position = new Vector3(currentPos.x, currentPos.y, currentPos.z + deathZOffset);
+
+        Debug.Log($"FloatingObject moved to death position {transform.position} (Z+{deathZOffset})");
     }
 
     /// <summary>
@@ -140,11 +268,52 @@ public class FloatingObject : MonoBehaviour
         if (!showDebugRay)
             return;
 
-        Gizmos.color = Color.blue;
+        // Draw object position with color based on state
+        if (isDead)
+            Gizmos.color = Color.black;
+        else if (isLeaving)
+            Gizmos.color = Color.yellow;
+        else
+            Gizmos.color = Color.blue;
         Gizmos.DrawWireSphere(transform.position, 0.2f);
 
+        // Draw raycast origin
+        Vector3 rayOrigin;
+        if (isLeaving)
+        {
+            rayOrigin = transform.position;
+        }
+        else
+        {
+            rayOrigin = transform.position + Vector3.up * raycastHeightOffset;
+        }
+
+        Gizmos.color = isDead ? Color.black : (isLeaving ? Color.red : Color.yellow);
+        Gizmos.DrawWireSphere(rayOrigin, 0.3f);
+
         // Draw raycast direction
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawRay(transform.position, Vector3.forward * 2f);
+        Gizmos.color = isDead ? Color.gray : (isLeaving ? Color.red : Color.cyan);
+        Gizmos.DrawRay(rayOrigin, Vector3.forward * 2f);
+
+        // Draw line connecting object to raycast origin (if different)
+        if (!isLeaving)
+        {
+            Gizmos.color = Color.gray;
+            Gizmos.DrawLine(transform.position, rayOrigin);
+        }
+
+        // Draw rotation indicator (forward direction arrow)
+        if (showRotationDebug)
+        {
+            Gizmos.color = Color.magenta;
+            Vector3 forward = transform.forward * 1.5f;
+            Gizmos.DrawRay(transform.position, forward);
+
+            // Draw arrow head
+            Vector3 arrowTip = transform.position + forward;
+            Vector3 right = transform.right * 0.3f;
+            Gizmos.DrawLine(arrowTip, arrowTip - forward.normalized * 0.3f + right);
+            Gizmos.DrawLine(arrowTip, arrowTip - forward.normalized * 0.3f - right);
+        }
     }
 }

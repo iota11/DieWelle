@@ -1,8 +1,22 @@
 using UnityEngine;
 
 /// <summary>
+/// Weighted prefab container for spawning
+/// </summary>
+[System.Serializable]
+public class WeightedPrefab
+{
+    [Tooltip("Prefab to spawn")]
+    public GameObject prefab;
+
+    [Tooltip("Weight/probability (higher = more likely to spawn)")]
+    public float weight = 1f;
+}
+
+/// <summary>
 /// Spawns floating objects along a 170m line at y=-14
 /// Can be placed anywhere in the scene, tracks wave position automatically
+/// Supports multiple prefabs with weighted random selection
 /// </summary>
 public class FloatingObjectSpawner : MonoBehaviour
 {
@@ -13,8 +27,8 @@ public class FloatingObjectSpawner : MonoBehaviour
     [Tooltip("Y position where objects spawn")]
     public float spawnHeight = -14f;
 
-    [Tooltip("Prefab of the floating object to spawn")]
-    public GameObject floatingObjectPrefab;
+    [Tooltip("List of prefabs with their spawn weights")]
+    public WeightedPrefab[] weightedPrefabs;
 
     [Tooltip("Reference to the wave object (optional, uses world position if null)")]
     public Transform waveTransform;
@@ -39,12 +53,44 @@ public class FloatingObjectSpawner : MonoBehaviour
     private float nextSpawnTime;
     private int totalSpawned = 0;
 
+    private float totalWeight = 0f;
+
     void Start()
     {
         // Validation
-        if (floatingObjectPrefab == null)
+        if (weightedPrefabs == null || weightedPrefabs.Length == 0)
         {
-            Debug.LogError("FloatingObjectSpawner: No prefab assigned in Inspector!");
+            Debug.LogError("FloatingObjectSpawner: No weighted prefabs assigned in Inspector!");
+            enabled = false;
+            return;
+        }
+
+        // Validate prefabs and calculate total weight
+        totalWeight = 0f;
+        int validPrefabCount = 0;
+        for (int i = 0; i < weightedPrefabs.Length; i++)
+        {
+            if (weightedPrefabs[i].prefab == null)
+            {
+                Debug.LogWarning($"FloatingObjectSpawner: Prefab at index {i} is null, skipping");
+                continue;
+            }
+
+            if (weightedPrefabs[i].weight <= 0)
+            {
+                Debug.LogWarning($"FloatingObjectSpawner: Prefab '{weightedPrefabs[i].prefab.name}' has weight {weightedPrefabs[i].weight}, setting to 0.1");
+                weightedPrefabs[i].weight = 0.1f;
+            }
+
+            totalWeight += weightedPrefabs[i].weight;
+            validPrefabCount++;
+        }
+
+        if (validPrefabCount == 0)
+        {
+            Debug.LogError("FloatingObjectSpawner: No valid prefabs found!");
+            enabled = false;
+            return;
         }
 
         if (objectsPerSpawn <= 0)
@@ -59,7 +105,17 @@ public class FloatingObjectSpawner : MonoBehaviour
         if (showDebugLogs)
         {
             Debug.Log($"FloatingObjectSpawner started. First spawn at {nextSpawnTime}");
-            Debug.Log($"Settings - Prefab: {(floatingObjectPrefab != null ? floatingObjectPrefab.name : "NULL")}, ObjectsPerSpawn: {objectsPerSpawn}, Interval: {minSpawnInterval}-{maxSpawnInterval}s");
+            Debug.Log($"Settings - {validPrefabCount} prefabs, Total weight: {totalWeight}, ObjectsPerSpawn: {objectsPerSpawn}, Interval: {minSpawnInterval}-{maxSpawnInterval}s");
+
+            // Log each prefab's probability
+            for (int i = 0; i < weightedPrefabs.Length; i++)
+            {
+                if (weightedPrefabs[i].prefab != null)
+                {
+                    float probability = (weightedPrefabs[i].weight / totalWeight) * 100f;
+                    Debug.Log($"  - {weightedPrefabs[i].prefab.name}: weight={weightedPrefabs[i].weight}, probability={probability:F1}%");
+                }
+            }
         }
     }
 
@@ -107,6 +163,54 @@ public class FloatingObjectSpawner : MonoBehaviour
     }
 
     /// <summary>
+    /// Selects a random prefab based on weights
+    /// </summary>
+    /// <returns>Selected prefab GameObject, or null if none available</returns>
+    GameObject SelectWeightedPrefab()
+    {
+        if (totalWeight <= 0f)
+        {
+            Debug.LogError("FloatingObjectSpawner: Total weight is 0!");
+            return null;
+        }
+
+        // Generate random value between 0 and total weight
+        float randomValue = Random.Range(0f, totalWeight);
+        float cumulativeWeight = 0f;
+
+        // Iterate through weighted prefabs
+        for (int i = 0; i < weightedPrefabs.Length; i++)
+        {
+            if (weightedPrefabs[i].prefab == null)
+                continue;
+
+            cumulativeWeight += weightedPrefabs[i].weight;
+
+            // If cumulative weight exceeds random value, select this prefab
+            if (randomValue <= cumulativeWeight)
+            {
+                if (showDebugLogs)
+                {
+                    Debug.Log($"Selected prefab: {weightedPrefabs[i].prefab.name} (random={randomValue:F2}, cumulative={cumulativeWeight:F2})");
+                }
+                return weightedPrefabs[i].prefab;
+            }
+        }
+
+        // Fallback: return first valid prefab (should never happen)
+        for (int i = 0; i < weightedPrefabs.Length; i++)
+        {
+            if (weightedPrefabs[i].prefab != null)
+            {
+                Debug.LogWarning("FloatingObjectSpawner: Fallback to first prefab");
+                return weightedPrefabs[i].prefab;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Spawns a floating object at a random position along the spawner line
     /// </summary>
     /// <returns>True if spawned successfully, false otherwise</returns>
@@ -117,15 +221,18 @@ public class FloatingObjectSpawner : MonoBehaviour
             Debug.Log("SpawnFloatingObject() called");
         }
 
-        if (floatingObjectPrefab == null)
+        // Select a prefab using weighted random
+        GameObject selectedPrefab = SelectWeightedPrefab();
+
+        if (selectedPrefab == null)
         {
-            Debug.LogWarning("FloatingObjectSpawner: No prefab assigned!");
+            Debug.LogWarning("FloatingObjectSpawner: No prefab selected!");
             return false;
         }
 
         if (showDebugLogs)
         {
-            Debug.Log("Prefab check passed");
+            Debug.Log($"Prefab selected: {selectedPrefab.name}");
         }
 
         // Calculate random X position along the spawner length
@@ -140,11 +247,11 @@ public class FloatingObjectSpawner : MonoBehaviour
 
         if (showDebugLogs)
         {
-            Debug.Log($"About to instantiate at {spawnPosition}");
+            Debug.Log($"About to instantiate {selectedPrefab.name} at {spawnPosition}");
         }
 
         // Instantiate the floating object
-        GameObject spawnedObject = Instantiate(floatingObjectPrefab, spawnPosition, Quaternion.identity);
+        GameObject spawnedObject = Instantiate(selectedPrefab, spawnPosition, Quaternion.identity);
 
         if (showDebugLogs)
         {
