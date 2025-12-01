@@ -159,7 +159,7 @@ public class FloatingObject : MonoBehaviour
             float deathElapsed = Time.time - deathStartTime;
             if (deathElapsed >= deathFallDuration)
             {
-                Debug.Log($"FloatingObject destroyed after death fall at position {transform.position}");
+                //Debug.Log($"FloatingObject destroyed after death fall at position {transform.position}");
                 Destroy(gameObject);
             }
         }
@@ -234,7 +234,7 @@ public class FloatingObject : MonoBehaviour
             else
             {
                 // Normal state and no wave detected → enter leaving state
-                Debug.Log($"FloatingObject entering leaving state at position {transform.position}");
+                //Debug.Log($"FloatingObject entering leaving state at position {transform.position}");
                 isLeaving = true;
                 leavingStartTime = Time.time;
             }
@@ -248,7 +248,7 @@ public class FloatingObject : MonoBehaviour
     {
         if (isDead) return; // Already dead
 
-        Debug.Log($"FloatingObject entering death state at position {transform.position}");
+        //Debug.Log($"FloatingObject entering death state at position {transform.position}");
 
         isDead = true;
         deathStartTime = Time.time;
@@ -257,7 +257,7 @@ public class FloatingObject : MonoBehaviour
         Vector3 currentPos = transform.position;
         transform.position = new Vector3(currentPos.x, currentPos.y, currentPos.z + deathZOffset);
 
-        Debug.Log($"FloatingObject moved to death position {transform.position} (Z+{deathZOffset})");
+        //Debug.Log($"FloatingObject moved to death position {transform.position} (Z+{deathZOffset})");
     }
 
     /// <summary>
