@@ -52,12 +52,31 @@ public class FloatingObject : MonoBehaviour
     [Tooltip("Maximum rotation speed around local Y axis (degrees/second)")]
     public float maxRotationSpeed = 180f;
 
+    [Header("Collision Settings")]
+    [Tooltip("Collision radius for distance-based collision detection (meters)")]
+    public float collisionRadius = 2f;
+
+    [Tooltip("Energy value when hit (positive = restore, negative = damage)")]
+    public float energyValue = -10f;
+
+    [Tooltip("Child object to deactivate on collision (contains mesh/visuals)")]
+    public GameObject childObject;
+
+    [Tooltip("Particle system prefab to spawn on collision")]
+    public GameObject disappearEffectPrefab;
+
+    [Tooltip("Duration before destroying object after collision (seconds)")]
+    public float destroyDelay = 2f;
+
     [Header("Debug")]
     [Tooltip("Show raycast debug line")]
     public bool showDebugRay = true;
 
     [Tooltip("Show rotation debug info")]
     public bool showRotationDebug = false;
+
+    [Tooltip("Show collision radius in editor")]
+    public bool showCollisionRadius = true;
 
     private float verticalVelocity = 0f;
     private float lastCheckTime = 0f;
@@ -75,6 +94,10 @@ public class FloatingObject : MonoBehaviour
     // Death state
     private bool isDead = false;
     private float deathStartTime = 0f;
+
+    // Collision state
+    private bool hasBeenHit = false;
+    private float disappearStartTime = 0f;
 
     void Start()
     {
@@ -261,6 +284,92 @@ public class FloatingObject : MonoBehaviour
     }
 
     /// <summary>
+    /// Called by player when collision is detected
+    /// Returns true if collision was processed, false if object can't be hit
+    /// </summary>
+    public bool OnPlayerCollision()
+    {
+        // Can only be hit in normal state (not leaving, not dead, not already hit)
+        if (hasBeenHit || isLeaving || isDead)
+        {
+            return false;
+        }
+
+        // Mark as hit
+        hasBeenHit = true;
+        disappearStartTime = Time.time;
+
+        // Apply energy modification
+        if (energyValue != 0f)
+        {
+            if (EnergyManager.Instance != null)
+            {
+                if (energyValue > 0)
+                {
+                    EnergyManager.Instance.AddEnergy(energyValue);
+                }
+                else
+                {
+                    EnergyManager.Instance.RemoveEnergy(-energyValue);
+                }
+            }
+            else
+            {
+                Debug.LogWarning("FloatingObject: EnergyManager not found!");
+            }
+        }
+
+        // Deactivate child object (mesh/visuals)
+        if (childObject != null)
+        {
+            childObject.SetActive(false);
+        }
+
+        // Spawn disappear particle effect
+        if (disappearEffectPrefab != null)
+        {
+            GameObject effect = Instantiate(disappearEffectPrefab, transform.position, transform.rotation);
+
+            // Get particle system and play it
+            ParticleSystem ps = effect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ps.Play();
+
+                // Auto-destroy the effect after it finishes
+                float effectDuration = ps.main.duration + ps.main.startLifetime.constantMax;
+                Destroy(effect, effectDuration);
+            }
+            else
+            {
+                // Fallback: destroy after 2 seconds if no ParticleSystem found
+                Destroy(effect, 2f);
+            }
+        }
+
+        // Schedule destruction of this object
+        Destroy(gameObject, destroyDelay);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Checks if this object can collide with player (only in normal state)
+    /// </summary>
+    public bool CanCollide()
+    {
+        return !hasBeenHit && !isLeaving && !isDead;
+    }
+
+    /// <summary>
+    /// Gets the collision radius for distance checking
+    /// </summary>
+    public float GetCollisionRadius()
+    {
+        return collisionRadius;
+    }
+
+    /// <summary>
     /// Optional: Visualize the object in the editor
     /// </summary>
     void OnDrawGizmos()
@@ -314,6 +423,35 @@ public class FloatingObject : MonoBehaviour
             Vector3 right = transform.right * 0.3f;
             Gizmos.DrawLine(arrowTip, arrowTip - forward.normalized * 0.3f + right);
             Gizmos.DrawLine(arrowTip, arrowTip - forward.normalized * 0.3f - right);
+        }
+
+        // Draw collision radius (XY plane circle)
+        if (showCollisionRadius)
+        {
+            Color radiusColor;
+            if (hasBeenHit)
+                radiusColor = Color.gray;
+            else if (CanCollide())
+                radiusColor = new Color(0f, 1f, 0f, 0.3f); // Green for active
+            else
+                radiusColor = new Color(1f, 1f, 0f, 0.3f); // Yellow for inactive
+
+            Gizmos.color = radiusColor;
+
+            // Draw circle in XY plane (perpendicular to Z axis)
+            int segments = 32;
+            Vector3 prevPoint = transform.position + new Vector3(collisionRadius, 0, 0);
+            for (int i = 1; i <= segments; i++)
+            {
+                float angle = (i / (float)segments) * Mathf.PI * 2f;
+                Vector3 newPoint = transform.position + new Vector3(
+                    Mathf.Cos(angle) * collisionRadius,
+                    Mathf.Sin(angle) * collisionRadius,
+                    0f
+                );
+                Gizmos.DrawLine(prevPoint, newPoint);
+                prevPoint = newPoint;
+            }
         }
     }
 }

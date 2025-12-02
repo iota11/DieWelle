@@ -263,6 +263,19 @@ public class SurfingController : MonoBehaviour
     public float cur_rot_degree { get; set; }
     public float localspeed { get; set; }
     public float waveBaseSpeed = 5f;
+
+    [Header("Collision Settings")]
+    [Tooltip("Player collision radius (meters)")]
+    public float playerRadius = 3f;
+
+    [Tooltip("Max X distance to check for collision optimization (meters)")]
+    public float maxXCheckDistance = 20f;
+
+    [Tooltip("Tag for floating objects")]
+    public string floatingObjectTag = "FloatingObject";
+
+    [Tooltip("Show collision debug info")]
+    public bool showCollisionDebug = false;
     void Start()
     {
         m_ptm = GetComponent<PlayerTouchMovement>();
@@ -277,6 +290,34 @@ public class SurfingController : MonoBehaviour
         deadState = new DeadState(this);
         // Start in the waiting state
         currentState = waitingState;
+
+        // Subscribe to energy depletion event
+        if (EnergyManager.Instance != null)
+        {
+            EnergyManager.Instance.OnEnergyDepleted += OnEnergyDepleted;
+        }
+        else
+        {
+            Debug.LogWarning("SurfingController: EnergyManager not found!");
+        }
+    }
+
+    void OnDestroy()
+    {
+        // Unsubscribe from events
+        if (EnergyManager.Instance != null)
+        {
+            EnergyManager.Instance.OnEnergyDepleted -= OnEnergyDepleted;
+        }
+    }
+
+    /// <summary>
+    /// Called when player energy is depleted
+    /// </summary>
+    private void OnEnergyDepleted()
+    {
+        Debug.Log("<color=red>Player died from energy depletion!</color>");
+        SwitchState(deadState);
     }
 
     public void SwitchState(IState newState)
@@ -292,6 +333,8 @@ public class SurfingController : MonoBehaviour
         TrackGlobalRotation(movement);//record rotation all the time.
         currentState?.FixedUpdate();
 
+        // Check for collisions with floating objects
+        CheckFloatingObjectCollisions();
     }
 
     public void ResetPlayer() {
@@ -327,5 +370,65 @@ public class SurfingController : MonoBehaviour
             lastAngle = currentAngle;
         }
 
+    }
+
+    /// <summary>
+    /// Checks for collisions with floating objects using distance-based detection
+    /// Optimized by checking X distance first
+    /// </summary>
+    private void CheckFloatingObjectCollisions()
+    {
+        // Get player position (XY plane only)
+        Vector3 playerPos = transform.position;
+
+        // Find all floating objects by tag
+        GameObject[] floatingObjects = GameObject.FindGameObjectsWithTag(floatingObjectTag);
+
+        if (floatingObjects.Length == 0)
+            return;
+
+        foreach (GameObject obj in floatingObjects)
+        {
+            if (obj == null)
+                continue;
+
+            // Get FloatingObject component
+            FloatingObject floatingObj = obj.GetComponent<FloatingObject>();
+            if (floatingObj == null)
+                continue;
+
+            // Only collide if object can be hit
+            if (!floatingObj.CanCollide())
+                continue;
+
+            // Optimization: Check X distance first
+            Vector3 objPos = obj.transform.position;
+            float xDistance = Mathf.Abs(playerPos.x - objPos.x);
+
+            // Skip if X distance is too far
+            if (xDistance > maxXCheckDistance)
+                continue;
+
+            // Calculate distance in XY plane only (ignore Z)
+            float distanceXY = Vector2.Distance(
+                new Vector2(playerPos.x, playerPos.y),
+                new Vector2(objPos.x, objPos.y)
+            );
+
+            // Get combined collision radius
+            float combinedRadius = playerRadius + floatingObj.GetCollisionRadius();
+
+            // Check collision
+            if (distanceXY <= combinedRadius)
+            {
+                // Collision detected!
+                bool hit = floatingObj.OnPlayerCollision();
+
+                if (hit && showCollisionDebug)
+                {
+                    Debug.Log($"<color=yellow>Collision with {obj.name} at distance {distanceXY:F2}m (combined radius: {combinedRadius:F2}m)</color>");
+                }
+            }
+        }
     }
 }

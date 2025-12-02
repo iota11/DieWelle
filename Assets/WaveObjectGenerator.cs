@@ -250,13 +250,7 @@ public class WaveObjectGenerator : MonoBehaviour
         float spawnThreshold = waveHeadX - spawnAheadOfHead;  // 30m ahead of wave head (further left)
         float recycleThreshold = waveTailX + recycleBehindTail;  // 10m behind wave tail (further right)
 
-        // ALWAYS log every 60 frames for debugging
-        if (Time.frameCount % 60 == 0)
-        {
-            Debug.Log($"[WaveObjectGenerator] Wave - Center: {waveTransform.position.x:F2}, Head: {waveHeadX:F2}, Tail: {waveTailX:F2}");
-            Debug.Log($"[WaveObjectGenerator] SpawnThreshold: {spawnThreshold:F2}, RecycleThreshold: {recycleThreshold:F2}");
-            Debug.Log($"[WaveObjectGenerator] Active objects: {activeObjects.Count}, Pool size: {objectPool.Count}");
-        }
+
 
         // Find the leftmost active object (since wave moves in -X direction)
         float leftmostObjectX = float.MaxValue;
@@ -270,18 +264,7 @@ public class WaveObjectGenerator : MonoBehaviour
             }
         }
 
-        if (Time.frameCount % 60 == 0)
-        {
-            if (leftmostObject != null)
-            {
-                BaseObjectMover mover = leftmostObject.GetComponent<BaseObjectMover>();
-                Debug.Log($"[WaveObjectGenerator] Leftmost object at X={leftmostObjectX:F2}, velocity={mover?.velocity}");
-            }
-            else
-            {
-                Debug.Log($"[WaveObjectGenerator] No leftmost object found!");
-            }
-        }
+      
 
         // Spawn new objects to maintain coverage
         // Since wave moves faster (10m/s) than objects (3m/s), spawnThreshold moves faster
@@ -319,7 +302,7 @@ public class WaveObjectGenerator : MonoBehaviour
 
             // ALWAYS log spawning
             float gapDistance = leftmostObjectX - spawnThreshold;
-            Debug.Log($"[WaveObjectGenerator] SPAWNED object at X={newSpawnX:F2}, leftmost was {leftmostObjectX:F2}, threshold={spawnThreshold:F2}, gap={gapDistance:F2}");
+            //Debug.Log($"[WaveObjectGenerator] SPAWNED object at X={newSpawnX:F2}, leftmost was {leftmostObjectX:F2}, threshold={spawnThreshold:F2}, gap={gapDistance:F2}");
         }
 
         // Check for objects to recycle (behind wave tail, which is on the right)
@@ -334,21 +317,10 @@ public class WaveObjectGenerator : MonoBehaviour
                 recycledCount++;
 
                 // ALWAYS log recycling
-                Debug.Log($"[WaveObjectGenerator] RECYCLED object at X={objX:F2}, recycleThreshold={recycleThreshold:F2}");
+               // Debug.Log($"[WaveObjectGenerator] RECYCLED object at X={objX:F2}, recycleThreshold={recycleThreshold:F2}");
             }
         }
 
-        if (Time.frameCount % 60 == 0)
-        {
-            if (recycledCount == 0)
-            {
-                Debug.Log($"[WaveObjectGenerator] No objects recycled this check");
-            }
-            else
-            {
-                Debug.Log($"[WaveObjectGenerator] Recycled {recycledCount} objects this check");
-            }
-        }
     }
 
     void OnDrawGizmos()
