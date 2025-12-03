@@ -289,11 +289,16 @@ public class FloatingObject : MonoBehaviour
     /// </summary>
     public bool OnPlayerCollision()
     {
+        Debug.LogWarning($"=== OnPlayerCollision called on {gameObject.name} ===");
+
         // Can only be hit in normal state (not leaving, not dead, not already hit)
         if (hasBeenHit || isLeaving || isDead)
         {
+            Debug.LogWarning($"Collision rejected - hasBeenHit:{hasBeenHit}, isLeaving:{isLeaving}, isDead:{isDead}");
             return false;
         }
+
+        Debug.LogWarning("=== Collision accepted, spawning VFX and applying effects ===");
 
         // Mark as hit
         hasBeenHit = true;
@@ -328,13 +333,36 @@ public class FloatingObject : MonoBehaviour
         // Spawn disappear particle effect
         if (disappearEffectPrefab != null)
         {
-            GameObject effect = Instantiate(disappearEffectPrefab, transform.position, transform.rotation);
+            // Spawn VFX slightly in front (negative Z) so it's visible over transparent mesh
+            Vector3 vfxPosition = transform.position + new Vector3(0, 0, -2f);
+
+            // Rotate VFX so its local Z axis points toward global Y axis (upward)
+            Quaternion vfxRotation = Quaternion.FromToRotation(Vector3.forward, Vector3.up);
+
+            Debug.Log($"Spawning VFX at position: {vfxPosition} (original: {transform.position})");
+            GameObject effect = Instantiate(disappearEffectPrefab, vfxPosition, vfxRotation);
+            Debug.Log($"VFX instantiated: {effect.name}, Rotation: {vfxRotation.eulerAngles}, Scale: {effect.transform.localScale}");
+
+            // Inherit X-axis velocity from FloatingObject
+            Rigidbody rb = effect.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.linearVelocity = new Vector3(horizontalSpeed, 0f, 0f);
+                Debug.Log($"VFX Rigidbody velocity set to: {rb.linearVelocity}");
+            }
 
             // Get particle system and play it
             ParticleSystem ps = effect.GetComponent<ParticleSystem>();
             if (ps != null)
             {
+                // Inherit X-axis velocity in particle system
+                var velocityModule = ps.velocityOverLifetime;
+                velocityModule.enabled = true;
+                velocityModule.space = ParticleSystemSimulationSpace.World;
+                velocityModule.x = horizontalSpeed;
+
                 ps.Play();
+                Debug.Log($"Particle system playing. Duration: {ps.main.duration}, Lifetime: {ps.main.startLifetime.constantMax}, Inherited velocity X: {horizontalSpeed}");
 
                 // Auto-destroy the effect after it finishes
                 float effectDuration = ps.main.duration + ps.main.startLifetime.constantMax;
@@ -342,9 +370,14 @@ public class FloatingObject : MonoBehaviour
             }
             else
             {
+                Debug.LogWarning("No ParticleSystem component found on VFX prefab!");
                 // Fallback: destroy after 2 seconds if no ParticleSystem found
                 Destroy(effect, 2f);
             }
+        }
+        else
+        {
+            Debug.LogWarning("FloatingObject: disappearEffectPrefab is null!");
         }
 
         // Schedule destruction of this object

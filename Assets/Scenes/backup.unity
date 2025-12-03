@@ -19923,6 +19923,10 @@ PrefabInstance:
       propertyPath: m_CastShadows
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3599772533154576486, guid: e7205efa89e09e148a32349b37c48ee1, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 3966741781385565816, guid: e7205efa89e09e148a32349b37c48ee1, type: 3}
       propertyPath: m_Layer
       value: 7
@@ -20084,10 +20088,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: -4243961980357485286, guid: 365670bea1730ee47aacb1c5198b49ac, type: 3}
-      propertyPath: collisionRadius
-      value: 1.21
-      objectReference: {fileID: 0}
     - target: {fileID: 1373731228373779850, guid: 365670bea1730ee47aacb1c5198b49ac, type: 3}
       propertyPath: m_Name
       value: ppl_8
@@ -20372,10 +20372,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 3699564036752496285, guid: d53c7cfd4b9b07e489279fe93ed599d3, type: 3}
-      propertyPath: surfingController
-      value: 
-      objectReference: {fileID: 729607530}
     - target: {fileID: 5002843367742970355, guid: d53c7cfd4b9b07e489279fe93ed599d3, type: 3}
       propertyPath: m_Name
       value: ppl_1

@@ -129,7 +129,7 @@ Material:
     - _SoftParticlesNearFadeDistance: 0
     - _SrcBlend: 5
     - _Surface: 1
-    - _UseSoftParticles: 1
+    - _UseSoftParticles: 0
     - _UserLerp: 1
     - _ZTest: 4
     - _ZWrite: 0
