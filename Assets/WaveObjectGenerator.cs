@@ -277,7 +277,7 @@ public class WaveObjectGenerator : MonoBehaviour
 
         if (Time.frameCount % 60 == 0)
         {
-            Debug.Log($"[WaveObjectGenerator] Should spawn? {shouldSpawn} (leftmost={leftmostObjectX:F2}, threshold={spawnThreshold:F2})");
+            //Debug.Log($"[WaveObjectGenerator] Should spawn? {shouldSpawn} (leftmost={leftmostObjectX:F2}, threshold={spawnThreshold:F2})");
         }
 
         if (shouldSpawn)

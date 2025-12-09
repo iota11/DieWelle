@@ -1,23 +1,23 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
+using TMPro;
 
 public class TextManager : SingletonBehavior<TextManager>
 {
     [SerializeField]
-    private Text scoreText;                   // Text to show score
+    private TextMeshProUGUI scoreText;                   // Text to show score
     [SerializeField]
-    private Text rotationText;                // Text to show rotation achievements
+    private TextMeshProUGUI rotationText;                // Text to show rotation achievements
     [SerializeField]
-    private Text comboText;                   // Text to show current combo
+    private TextMeshProUGUI comboText;                   // Text to show current combo
     [SerializeField]
-    private Text deathText;                   // Text to show on death
+    private TextMeshProUGUI deathText;                   // Text to show on death
     [SerializeField]
-    private Text jumpHeightText;              // Text to show current jump height
+    private TextMeshProUGUI jumpHeightText;              // Text to show current jump height
     [SerializeField]
-    private Text livesText;                   // Text to show remaining lives
+    private TextMeshProUGUI livesText;                   // Text to show remaining lives
 
-    private Dictionary<TextType, Text> textTypeDict = new Dictionary<TextType, Text>();
+    private Dictionary<TextType, TextMeshProUGUI> textTypeDict = new Dictionary<TextType, TextMeshProUGUI>();
 
     protected override void Awake()
     {
@@ -40,7 +40,7 @@ public class TextManager : SingletonBehavior<TextManager>
             return;
         }
 
-        Text textField = textTypeDict[type];
+        TextMeshProUGUI textField = textTypeDict[type];
 
         if (textField != null)
         {
@@ -60,7 +60,7 @@ public class TextManager : SingletonBehavior<TextManager>
             return;
         }
 
-        Text textField = textTypeDict[type];
+        TextMeshProUGUI textField = textTypeDict[type];
 
         if (textField != null)
         {

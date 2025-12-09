@@ -164,8 +164,18 @@ public class JumpState : IState
                surfingController.SwitchState(surfingController.deadState);
             } else {
                 end_rotation = surfingController.globalTotalRotation;
-                int rotationItvl = (int)Mathf.Abs(end_rotation - start_rotation);
-                ScoreManager.instance.AddScore(rotationItvl);
+                float rotationDegrees = Mathf.Abs(end_rotation - start_rotation);
+                float rotationCircles = rotationDegrees / 360f;
+
+                // Debug.Log($"<color=lime>Landing successful! Start: {start_rotation}°, End: {end_rotation}°, Degrees: {rotationDegrees}°, Circles: {rotationCircles}</color>");
+
+                // Call new scoring system with rotation circles
+                if (ScoreManager.instance != null)
+                {
+                    // Debug.Log("Calling ScoreManager.CalculateCircleScore...");
+                    ScoreManager.instance.CalculateCircleScore(rotationCircles);
+                }
+
                 surfingController.localspeed = (proj*rb.linearVelocity - surfingController.waveBaseSpeed * Vector3.left).magnitude;
                 surfingController.SwitchState(surfingController.surfingState);
             }
