@@ -33,6 +33,11 @@ namespace Ara
         public void Add(T item)
         {
             EnsureCapacity(count + 1);
+            // Defensive check: ensure count is within bounds
+            if (count >= data.Length)
+            {
+                Array.Resize(ref data, (count + 1) * 2);
+            }
             data[count++] = item;
         }
 
@@ -162,7 +167,7 @@ namespace Ara
 
         public void EnsureCapacity(int capacity)
         {
-            if (capacity > data.Length)
+            if (capacity >= data.Length)
                 Array.Resize(ref data, capacity * 2);
         }
 

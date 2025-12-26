@@ -274,6 +274,13 @@ public class SurfingController : MonoBehaviour
     public float localspeed { get; set; }
     public float waveBaseSpeed = 5f;
 
+    [Header("Keyboard Controls")]
+    [Tooltip("Max rotation speed from keyboard (degrees per second) - shares with joystick")]
+    public float maxKeyboardRotationSpeed = 400f;
+    [Tooltip("Keyboard rotation speed multiplier when jumping/in air (matches jump rotation speed)")]
+    public float keyboardJumpRotationMultiplier = 1.5f;
+    private bool wasKeyboardActiveLastFrame = false;
+
     [Header("Collision Settings")]
     [Tooltip("Player collision radius (meters)")]
     public float playerRadius = 3f;
@@ -292,6 +299,9 @@ public class SurfingController : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         startRotation = transform.localRotation;
         cur_rot_degree = 0f;
+
+        // Sync keyboard max speed with joystick rotation speed
+        maxKeyboardRotationSpeed = rotationSpeed_surf;
 
         // Initialize states passing the state machine (for potential callbacks)
         waitingState = new WaitingState(this);
@@ -338,9 +348,10 @@ public class SurfingController : MonoBehaviour
     }
 
     private void FixedUpdate() {
-        Vector2 movement = m_ptm.GetMovement();
+        Vector2 joystickMovement = m_ptm.GetMovement();
+        float keyboardRotation = GetKeyboardRotationInput();
 
-        TrackGlobalRotation(movement);//record rotation all the time.
+        TrackGlobalRotation(joystickMovement, keyboardRotation);//record rotation all the time.
         currentState?.FixedUpdate();
 
         // Check for collisions with floating objects
@@ -350,8 +361,39 @@ public class SurfingController : MonoBehaviour
     public void ResetPlayer() {
 
     }
-    private void TrackGlobalRotation(Vector2 movement) {//called each frame
+
+    /// <summary>
+    /// Handles keyboard rotation input (Up/Down arrow keys)
+    /// Returns the rotation delta for this frame
+    /// </summary>
+    private float GetKeyboardRotationInput() {
+        float rotationDelta = 0f;
+
+        // Apply multiplier if in jump state (in air)
+        float speedMultiplier = (currentState == jumpState) ? keyboardJumpRotationMultiplier : 1f;
+        float effectiveSpeed = maxKeyboardRotationSpeed * speedMultiplier;
+
+        // Check for arrow key input - instant response
+        if (Input.GetKey(KeyCode.UpArrow)) {
+            // Up arrow = counter-clockwise (negative rotation)
+            rotationDelta = -effectiveSpeed * Time.fixedDeltaTime;
+        }
+        else if (Input.GetKey(KeyCode.DownArrow)) {
+            // Down arrow = clockwise (positive rotation)
+            rotationDelta = effectiveSpeed * Time.fixedDeltaTime;
+        }
+
+        // Return the rotation change for this frame
+        return rotationDelta;
+    }
+
+    private void TrackGlobalRotation(Vector2 movement, float keyboardRotation) {//called each frame
+        float totalDeltaAngle = 0f;
+        bool hasJoystickInput = false;
+
+        // Handle joystick input
         if (movement.magnitude > 0.1f) {
+            hasJoystickInput = true;
             // Calculate current angle (0-360 degrees)
             float currentAngle = Mathf.Atan2(-movement.y, -movement.x) * Mathf.Rad2Deg;
             if (currentAngle < 0) currentAngle += 360f;
@@ -363,23 +405,43 @@ public class SurfingController : MonoBehaviour
             if (deltaAngle > 180f) deltaAngle -= 360f;
             if (deltaAngle < -180f) deltaAngle += 360f;
 
-            // Add absolute value of angle change to total rotation
-            globalTotalRotation += deltaAngle;
-            if (deltaAngle < 0f) {
-                animator.SetBool("Right", true);
-                animator.SetBool("Left", false);
+            totalDeltaAngle += deltaAngle;
 
-            } else if(deltaAngle >0f) {
-                animator.SetBool("Right", false);
-                animator.SetBool("Left", true);
-            } else {
-                animator.SetBool("Right", false);
-                animator.SetBool("Left", false);
-            }
             // Update lastAngle
             lastAngle = currentAngle;
         }
 
+        // Check keyboard input
+        bool hasKeyboardInput = Mathf.Abs(keyboardRotation) > 0.01f;
+
+        // KEYBOARD ONLY: Stop rotation immediately when key is released
+        if (wasKeyboardActiveLastFrame && !hasKeyboardInput) {
+            // Keyboard was just released - sync to stop rotation immediately
+            globalTotalRotation = cur_rot_degree;
+        }
+
+        // Add keyboard rotation (only if keyboard is active)
+        if (hasKeyboardInput) {
+            totalDeltaAngle += keyboardRotation;
+        }
+
+        // Update global total rotation
+        globalTotalRotation += totalDeltaAngle;
+
+        // Track keyboard state for next frame
+        wasKeyboardActiveLastFrame = hasKeyboardInput;
+
+        // Update animator based on rotation direction
+        if (totalDeltaAngle < -0.1f) {
+            animator.SetBool("Right", true);
+            animator.SetBool("Left", false);
+        } else if(totalDeltaAngle > 0.1f) {
+            animator.SetBool("Right", false);
+            animator.SetBool("Left", true);
+        } else {
+            animator.SetBool("Right", false);
+            animator.SetBool("Left", false);
+        }
     }
 
     /// <summary>

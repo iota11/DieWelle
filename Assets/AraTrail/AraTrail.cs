@@ -543,6 +543,8 @@ namespace Ara{
 
             for (int i = points.Count - 1; i >= 0; --i)
             {
+                // Bounds check to prevent index issues
+                if (i >= points.Count) continue;
 
                 Point point = points[i];
                 point.life -= DeltaTime;
@@ -554,15 +556,18 @@ namespace Ara{
                     if (Physics.Raycast(rayOrigin, rayDirection, out RaycastHit hit, 300f, combinedLayerMask)) {
                         front_land = true;
                     } else {
-                        points.RemoveAt(i);//custom code
-                        for (int j = i + 1; j < points.Count; j++) {
-                        }
+                        // Point didn't hit anything - need to remove it
                         if (front_land) {
-
-                            for (int j = i; j >= 0; j--) {
-                                points.RemoveAt(j);
-                            }
+                            // Previously detected land, now didn't hit
+                            // Remove current point and all previous points (from 0 to i)
+                            points.RemoveRange(0, i + 1);
+                            break;  // Exit loop after removal
+                        } else {
+                            // Just remove current point
+                            points.RemoveAt(i);
                         }
+                        // After removal, continue to next iteration
+                        continue;
                     }
                 }
                 if (point.life <= 0)
@@ -571,13 +576,14 @@ namespace Ara{
                     // Unsmoothed trails delete points as soon as they die.
                     if (smoothness <= 1)
                     {
-                        points.RemoveAt(i);
+                        if (i < points.Count) points.RemoveAt(i);
                     }
                     // Smoothed trails however, should wait until the next 2 points are dead too. This ensures spline continuity.
                     else
                     {
                         if (points[Mathf.Min(i + 1, points.Count - 1)].life <= 0 &&
-                            points[Mathf.Min(i + 2, points.Count - 1)].life <= 0)
+                            points[Mathf.Min(i + 2, points.Count - 1)].life <= 0 &&
+                            i < points.Count)
                             points.RemoveAt(i);
                     }
 
